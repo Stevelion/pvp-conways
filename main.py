@@ -1,11 +1,19 @@
 import numpy as np
 import pygame
 
-# grid dimension 2 length 2, [0] is living or dead value and [1] is owner value
+
 # owner is: 0 = dead, 1 = p1, 2 = p2, 3 = shrapnel, 4 = key/what you defend
 
 
 
+def update_grid():
+    new_grid = grid.copy()
+    relevants = set()
+    for living in np.nonzero(grid):
+        for cell in grid[living[0]-1:living[0]+1, living[1]-1:living[1]+1]:
+            relevants.add(cell)
+    for cell in relevants:
+        new_grid[cell] = update_cell(grid[cell[0]-1:cell[0]+1, cell[1]-1:cell[1]+1])
 
 def update_cell(kernel):
     if kernel[1,1] == 0: # if dead
@@ -24,31 +32,39 @@ def update_cell(kernel):
             return 0
 
 
-def update_grid():
-    new_grid = grid.copy()
-    relevants = set()
-    for living in np.nonzero(grid):
-        for cell in grid[living[0]-1:living[0]+1, living[1]-1:living[1]+1]:
-            relevants.add(cell)
-    for cell in relevants:
-        new_grid[cell] = update_cell(grid[cell[0]-1:cell[0]+1, cell[1]-1:cell[1]+1])
 
 
+def handle_game_events(events):
+    global right_drag
+    global middle_drag
+    for event in events:
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_SPACE:
+                    right_drag = False # safety to catch hitting space without mouseup
+                    time = not time # flip time on space press
+                if event.key == pygame.K_ESCAPE:
+                    middle_drag = False
+                    right_drag = False # safety to catch hitting space without mouseup
+                    open_escape()
+            if event.type in (pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN) and event.button < 4:
+                handle_game_click(event)
+            if event.type == pygame.MOUSEMOTION:
+                pass # handle motion
 
 
-def click_grid(coords):
-    """If grid is clicked, find which cell and operate on that cell"""
-    coords = coords[::-1] # reversed because numpy uses reversed coords
-    if grid[coords] == 0: grid[coords] = 1
-    else: grid[coords] = 0
-
-
-def handle_click(click):
+def handle_game_click(click):
     """Find click target and execute"""
     mouse_x, mouse_y = click.pos
     global right_drag
+    global middle_drag
     # determine what was clicked
-    if not time: # what to do if time is stopped
+    if click.button == 3:
+        middle_drag = not middle_drag
+    elif middle_drag == True: # stop dragging if there is a click
+        middle_drag = False
+        return
+    # what to do if time is stopped
+    if not time:
         if click.button == 2 and click.type == pygame.MOUSEBUTTONUP:
             right_drag = False
         # if click is on grid
@@ -59,21 +75,15 @@ def handle_click(click):
                 right_drag = True
 
 
-def handle_game_events(events):
-    for event in events:
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_SPACE:
-                    time = not time # flip time on space press
-                    global right_drag
-                    right_drag = False # safety to catch hitting space without mouseup
-                if event.key == pygame.K_ESCAPE:
-                    pass # open escape menu
-            if event.type in (pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN):
-                handle_click(event)
-            if event.type == pygame.MOUSEMOTION:
-                pass
+def click_grid(coords):
+    """If grid is clicked, find which cell and operate on that cell"""
+    coords = coords[::-1] # reversed because numpy uses reversed coords
+    if grid[coords] == 0: grid[coords] = 1
+    else: grid[coords] = 0
 
 
+def open_escape():
+    pass
 
 
 
@@ -91,6 +101,8 @@ def main():
     time = False
     global right_drag
     right_drag = False
+    global middle_drag
+    middle_drag = False
     global cell_size
     cell_size = 20
     global border_width
