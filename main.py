@@ -181,16 +181,21 @@ def level_edit():
 
 
 class Button(): # parent class for menu buttons
-    def __init__(self, rect, function, colour = GREY):
+    def __init__(self, text, rect, function, colour = GREY):
+        pygame.font.init()
         self.rect = pygame.Rect(rect)
         self.function = function
         self.colour = colour
+        self.text = text
+        self.font = pygame.font.SysFont('Arial', 25)
     def draw(self, surface):
         pygame.draw.rect(surface, self.colour, self.rect)
+        surface.blit(self.font.render(self.text, True, (0,0,0)), self.rect[0:2])
+
 
 class LevelButton(Button): # child class for buttons in level select submenu
-    def __init__(self, rect, filename, colour = GREY):
-        Button.__init__(self, rect, None, colour)
+    def __init__(self, text, rect, filename, colour = GREY):
+        Button.__init__(self, text, rect, None, colour)
         self.filename = filename
     def load(self):
         if self.filename == None: return
@@ -199,19 +204,20 @@ class LevelButton(Button): # child class for buttons in level select submenu
 
 def init_buttons():
     """initialize some button objects to easily draw them when a menu is active"""
+
     global singleplayer_button, level_editor_button, demo
     global level_1, level_2, level_3, level_4, level_5
     global levels
     # main menu buttons with bounds and submenu function
-    singleplayer_button = Button((280,200,100,50), level_select)
-    level_editor_button = Button(((280,260,100,50)), level_edit)
+    singleplayer_button = Button('Singleplayer', (280,200,100,50), level_select)
+    level_editor_button = Button('Level Editor', (280,260,100,50), level_edit)
     # level select buttons with bounds and filename to load
-    demo = LevelButton((200,200,100,50), 'demo.csv')
-    level_1 = LevelButton((200,260,100,50), 'level_1.csv')
-    level_2 = LevelButton((200,320,100,50), None)
-    level_3 = LevelButton((360,200,100,50), None)
-    level_4 = LevelButton((360,260,100,50), None)
-    level_5 = LevelButton((360,320,100,50), None)
+    demo = LevelButton('Demo', (200,200,100,50), 'demo.csv')
+    level_1 = LevelButton('Level 1', (200,260,100,50), 'level_1.csv')
+    level_2 = LevelButton('Level 2', (200,320,100,50), 'level_2.csv')
+    level_3 = LevelButton('Unused', (360,200,100,50), None)
+    level_4 = LevelButton('Unused', (360,260,100,50), None)
+    level_5 = LevelButton('Unused', (360,320,100,50), None)
     # levels list for later, probably init everything in here eventually
     levels = [demo, level_1, level_2, level_3, level_4, level_5]
 
