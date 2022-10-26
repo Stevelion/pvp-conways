@@ -3,17 +3,17 @@ import pygame
 import time
 # import subprocess # potentially for file management later
 
-
+GREY = (180,180,180)
 
 def init_vars():
     """initialize some vars, mostly here for alpha development"""
-    global cell_size, border_width, tickrate, colours, GREY
+    global cell_size, border_width, tickrate, colours
     cell_size = 20 # pixels
     border_width = 30 # pixels
     tickrate = 0.1 # seconds
     # owner: 0 = dead, 1 = player, 2 = enemy, 3 = shrapnel, 4 = what to defend/attack
     colours = {0 : (0, 0, 0), 1 : (0, 0, 255), 2 : (255, 0, 0), 3 : (225, 115, 20), 4 : (140, 0, 200)}
-    GREY = (180,180,180)
+
 
 
 
@@ -182,61 +182,75 @@ def level_edit():
 
 class Button(): # parent class for menu buttons
     def __init__(self, rect, function, colour = GREY):
-        self.rect = rect
+        self.rect = pygame.Rect(rect)
         self.function = function
         self.colour = colour
-    def draw(self, surface = window):
-        pygame.draw.rect(window, self.colour, self.rect)
+    def draw(self, surface):
+        pygame.draw.rect(surface, self.colour, self.rect)
 
 class LevelButton(Button): # child class for buttons in level select submenu
     def __init__(self, rect, filename, colour = GREY):
         Button.__init__(self, rect, None, colour)
         self.filename = filename
     def load(self):
+        if self.filename == None: return
         game(np.genfromtxt('levels/' + self.filename, delimiter=','))
 
 
 def init_buttons():
-    # initialize some button objects to easily draw them when a menu is active
-    global singleplayer_button, level_editor, demo
+    """initialize some button objects to easily draw them when a menu is active"""
+    global singleplayer_button, level_editor_button, demo
     global level_1, level_2, level_3, level_4, level_5
+    global levels
     # main menu buttons with bounds and submenu function
     singleplayer_button = Button((280,200,100,50), level_select)
-    level_editor = Button(((280,260,100,50)), level_edit)
+    level_editor_button = Button(((280,260,100,50)), level_edit)
     # level select buttons with bounds and filename to load
     demo = LevelButton((200,200,100,50), 'demo.csv')
-    level_1 = LevelButton((200,260,100,50), 'basic_level.csv')
+    level_1 = LevelButton((200,260,100,50), 'level_1.csv')
     level_2 = LevelButton((200,320,100,50), None)
     level_3 = LevelButton((360,200,100,50), None)
     level_4 = LevelButton((360,260,100,50), None)
     level_5 = LevelButton((360,320,100,50), None)
+    # levels list for later, probably init everything in here eventually
+    levels = [demo, level_1, level_2, level_3, level_4, level_5]
 
 
 def draw_main_menu():
     """draw main menu with singleplayer, custom level/level editor, settings"""
     window.fill((240, 240, 240))
-    pygame.draw.rect(window, GREY, (280,200,100,50))
+    singleplayer_button.draw(window)
+    level_editor_button.draw(window)
     pygame.display.update()
 
 
 def draw_level_select():
     """level select screen with buttons for each level"""
     window.fill((240, 240, 240))
+    demo.draw(window)
+    level_1.draw(window)
+    level_2.draw(window)
+    level_3.draw(window)
+    level_4.draw(window)
+    level_5.draw(window)
     pygame.display.update()
 
 
 def menu():
     """top level for menu"""
     # initialize button objects
+    init_buttons()
     draw_main_menu()
     while True:
         events = pygame.event.get()
         for event in events:
             if event.type in (pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN) and event.button in (1, 3):
-                # logic to find click target
-                game()
+                # logic to find click target and execute it's function
+                if singleplayer_button.rect.collidepoint(event.pos):
+                    singleplayer_button.function()
+                elif level_editor_button.rect.collidepoint(event.pos):
+                    level_editor_button.function()
                 draw_main_menu()
-                
             elif event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
@@ -251,8 +265,13 @@ def level_select():
         for event in events:
             if event.type in (pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN) and event.button in (1, 3):
                 # logic to find click target
-                pass
-                
+                for button in levels:
+                    if button.rect.collidepoint(event.pos):
+                        button.load()
+                draw_level_select()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return
             elif event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
@@ -268,12 +287,7 @@ def main():
     window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     window.fill((240, 240, 240)) # white background
 
-    # menu()
+    menu()
     
-    # level_edit()
-    board = np.genfromtxt('levels/demo.csv', delimiter=',')
-    # board = np.genfromtxt('levels/basic_level.csv', delimiter=',')
-    game(board)
-
 
 main() # at the top of the script are some init vars including tickrate (in seconds)
