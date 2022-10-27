@@ -20,6 +20,7 @@ Singleplayer contains a selection of prebuilt levels to play.
 Level Editor allows you to build your own levels and save them to play later.
 Level Editor Controls:
   Left click cycles through cell colours, right click cycles backwards.
+  Space turns time on or off, however the board is returned to its original state when time is turned off.
   's' saves your current board as 'savedgrid.csv' in your main PvP Conway's directory (not /levels).
  Empty Level provides an empty, non-build-restricted space to test patterns in.
  
