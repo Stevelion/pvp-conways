@@ -155,13 +155,17 @@ def game(board, restrict_build=False):
 
 def level_edit(board = np.zeros((34, 34))):
     """quickly bashed together level editor that prints grid to console
-    press s to save current grid as csv, does not have any update logic so space does nothing (intended)
+    press s to save current grid as csv
+    running time is temporary, turning it back off resets grid to before time was turned on (intended)
     mostly copy and paste from other funcs, purpose is to have a basic level editor to build test boards"""
     window.fill((240, 240, 240))
-    global ingame, saved_grid
+    global ingame, saved_grid, time_on, placeholder_grid
     ingame = True
+    time_on = False
     global grid
     grid = board
+    start_time = time.perf_counter() # record when the game started running to handle
+    cycles = 1                       # grid updates when time is on
     while ingame:
         # get events
         events = pygame.event.get()
@@ -176,13 +180,26 @@ def level_edit(board = np.zeros((34, 34))):
                     if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3 and grid[coords[0], coords[1]] > 0: # decrement when right click
                         grid[coords[0], coords[1]] -= 1
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
+                if event.key == pygame.K_SPACE:
+                    if time_on == False:
+                        placeholder_grid = grid.copy()
+                    else:
+                        grid = placeholder_grid
+                    time_on = not time_on
+                elif event.key == pygame.K_ESCAPE:
                     ingame = False
                 elif event.key == pygame.K_s: # save as csv
-                    np.savetxt('savedgrid.csv', grid, '%1.0f', delimiter=",")
+                    if time_on:
+                        np.savetxt('savedgrid.csv', placeholder_grid, '%1.0f', delimiter=",")
+                    else:
+                        np.savetxt('savedgrid.csv', grid, '%1.0f', delimiter=",")
             elif event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
+        if time.perf_counter() - start_time - cycles * tickrate > 0: # true every 'tickrate' seconds
+            cycles += 1
+            if time_on: # only run update logic if time is turned on
+                grid = update_grid()
         draw_grid()
         pygame.display.update()
         time.sleep(0.01)
