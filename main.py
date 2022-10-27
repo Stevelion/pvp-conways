@@ -86,12 +86,11 @@ def handle_game_events(events):
 
 def handle_game_click(click):
     """Find click target and execute"""
-    mouse_x, mouse_y = click.pos
     # determine what was clicked
     # only do if time is stopped
     if not time_on:
-        # if click is within grid bounds
-        if border_width < mouse_x < border_width + (grid.shape[1] - 4) * cell_size and border_width < mouse_y < border_width + (grid.shape[0] - 4) * cell_size:
+        # if click is within build area
+        if build_area.collidepoint(click.pos):
             coords = [int((axis - border_width)/cell_size + 2) for axis in click.pos[::-1]]
             if click.type == pygame.MOUSEBUTTONDOWN and click.button == 1 and grid[coords[0], coords[1]] == 0: # when left click
                 grid[coords[0], coords[1]] = 1 # if the clicked cell is dead, make it a player owned cell
@@ -118,8 +117,16 @@ def draw_grid():
 
 
 
-def game(board = np.zeros((34, 34))):
+def game(board, restrict_build=False):
     """start a game"""
+    window.fill((240, 240, 240))
+    global build_area
+    if restrict_build:
+        build_area = pygame.Rect(border_width + cell_size*15, border_width, cell_size*15 - 1, cell_size*15 - 1)
+        pygame.draw.rect(window, (30, 240, 80), build_area)
+    else:
+        build_area = pygame.Rect(border_width, border_width, cell_size*30 - 1, cell_size*30 - 1)
+        pygame.draw.rect(window, (240, 240, 240), build_area)
     # initialize basic game functions
     global ingame, game_over, time_on
     ingame = True
@@ -128,8 +135,8 @@ def game(board = np.zeros((34, 34))):
     global grid
     grid = board
 
-    start_time = time.perf_counter() # record when the game started to handle grid updates
-    cycles = 1                       # when time is on
+    start_time = time.perf_counter() # record when the game started running to handle
+    cycles = 1                       # grid updates when time is on
     while ingame:
         # get events
         handle_game_events(pygame.event.get())
@@ -146,14 +153,15 @@ def game(board = np.zeros((34, 34))):
 
 
 
-def level_edit():
+def level_edit(board = np.zeros((34, 34))):
     """quickly bashed together level editor that prints grid to console
     press s to save current grid as csv, does not have any update logic so space does nothing (intended)
     mostly copy and paste from other funcs, purpose is to have a basic level editor to build test boards"""
+    window.fill((240, 240, 240))
     global ingame, saved_grid
     ingame = True
     global grid
-    grid = np.zeros((34, 34))
+    grid = board
     while ingame:
         # get events
         events = pygame.event.get()
@@ -199,18 +207,19 @@ class LevelButton(Button): # child class for buttons in level select submenu
         self.filename = filename
     def load(self):
         if self.filename == None: return
-        game(np.genfromtxt('levels/' + self.filename, delimiter=','))
+        game(np.genfromtxt('levels/' + self.filename, delimiter=','), restrict_build=True)
 
 
 def init_buttons():
     """initialize some button objects to easily draw them when a menu is active"""
 
-    global singleplayer_button, level_editor_button, demo
-    global level_1, level_2, level_3, level_4, level_5
+    global singleplayer_button, level_editor_button, empty_level_button
+    global demo, level_1, level_2, level_3, level_4, level_5
     global levels
     # main menu buttons with bounds and submenu function
     singleplayer_button = Button('Singleplayer', (280,200,100,50), level_select)
     level_editor_button = Button('Level Editor', (280,260,100,50), level_edit)
+    empty_level_button = Button('Empty Level', (280,320,100,50), game)
     # level select buttons with bounds and filename to load
     demo = LevelButton('Demo', (200,200,100,50), 'demo.csv')
     level_1 = LevelButton('Level 1', (200,260,100,50), 'level_1.csv')
@@ -227,6 +236,7 @@ def draw_main_menu():
     window.fill((240, 240, 240))
     singleplayer_button.draw(window)
     level_editor_button.draw(window)
+    empty_level_button.draw(window)
     pygame.display.update()
 
 
@@ -256,6 +266,8 @@ def menu():
                     singleplayer_button.function()
                 elif level_editor_button.rect.collidepoint(event.pos):
                     level_editor_button.function()
+                elif empty_level_button.rect.collidepoint(event.pos):
+                    empty_level_button.function(np.zeros((34, 34)))
                 draw_main_menu()
             elif event.type == pygame.QUIT:
                 pygame.quit()
@@ -294,6 +306,7 @@ def main():
     window.fill((240, 240, 240)) # white background
 
     menu()
+    # level_edit(np.genfromtxt('levels/savedgrid.csv', delimiter=','))
     
 
 main() # at the top of the script are some init vars including tickrate (in seconds)
