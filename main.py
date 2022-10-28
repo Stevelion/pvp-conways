@@ -3,327 +3,311 @@ import pygame
 import time
 # import subprocess # potentially for file management later
 
-GREY = (180,180,180)
-
-def init_vars():
-    """initialize some vars, mostly here for alpha development"""
-    global cell_size, border_width, tickrate, colours
-    cell_size = 20 # pixels
-    border_width = 30 # pixels
-    tickrate = 0.1 # seconds
-    # owner: 0 = dead, 1 = player, 2 = enemy, 3 = shrapnel, 4 = what to defend/attack
-    colours = {0 : (0, 0, 0), 1 : (0, 0, 255), 2 : (255, 0, 0), 3 : (225, 115, 20), 4 : (140, 0, 200)}
+cell_size = 20 # pixels
+border_width = 30 # pixels
+tickrate = 0.1 # seconds
+# owner: 0 = dead, 1 = player, 2 = enemy, 3 = shrapnel, 4 = what to defend/attack
+colours = {0 : (0, 0, 0), 1 : (0, 0, 255), 2 : (255, 0, 0), 3 : (225, 115, 20), 4 : (140, 0, 200)}
+BUILD_COLOUR = (30, 240, 80)
+DEFAULT_BUTTON_COLOUR = (180,180,180)
 
 
 
+class Grid:
+    """Abstract class that evaluates CGoL logic on an array"""
+    def __init__(self, array, parent):
+        self.array = array
+        self.parent = parent
+    
+    def update_grid(self):
+        """handle updating the grid with CGoL logic every game tick while time is on"""
+        self.new_array = self.array.copy()
+        relevants = set()
+        nonzero = np.nonzero(self.array)
+        alive = [(nonzero[0][n], nonzero[1][n]) for n in range(len(nonzero[0]))]
+        for living in alive:
+            for y in range(-1, 2):
+                for x in range(-1, 2):
+                    relevants.add((living[0] + y, living[1] + x))
+        for cell in relevants:
+            self.new_array[cell] = self.update_cell(self.array[cell[0]-1:cell[0]+2, cell[1]-1:cell[1]+2])
+        # clean up edges
+        for n in range(2):
+            self.new_array[n, :] = self.array[n, :] * 0
+            self.new_array[-n-1, :] = self.array[-n-1, :] * 0
+            self.new_array[:, n] = self.array[:, n] * 0
+            self.new_array[:, -n-1] = self.array[:, -n-1] * 0
+        return self.new_array
 
-def update_grid():
-    """handle updating the grid with CGoL logic every game tick while time is on"""
-    global new_grid
-    new_grid = grid.copy()
-    relevants = set()
-    nonzero = np.nonzero(grid)
-    alive = [(nonzero[0][n], nonzero[1][n]) for n in range(len(nonzero[0]))]
-    for living in alive:
-        for y in range(-1, 2):
-            for x in range(-1, 2):
-                relevants.add((living[0] + y, living[1] + x))
-    for cell in relevants:
-        new_grid[cell] = update_cell(grid[cell[0]-1:cell[0]+2, cell[1]-1:cell[1]+2])
-    # clean up edges
-    for n in range(2):
-        new_grid[n, :] = grid[n, :] * 0
-        new_grid[-n-1, :] = grid[-n-1, :] * 0
-        new_grid[:, n] = grid[:, n] * 0
-        new_grid[:, -n-1] = grid[:, -n-1] * 0
-    return new_grid
-
-
-def update_cell(kernel):
-    """basic CGoL logic for a cell
-    kernel refers to the 3x3 of cells around the currently focused cell"""
-    global game_over
-    if kernel[1,1] == 0: # if dead
-        if len(np.nonzero(kernel)[0]) == 3: # become alive
-            # if all the same, return it
-            nonzero = np.nonzero(kernel)
-            if len(set([kernel[nonzero[0][n], nonzero[1][n]] for n in range(len(nonzero[0]))])) == 1:
-                return np.max(kernel)
-            else: # if mixed
+    def update_cell(self, kernel):
+        """basic CGoL logic for a cell
+        kernel refers to the 3x3 of cells around the currently focused cell"""
+        if kernel[1,1] == 0: # if dead
+            if len(np.nonzero(kernel)[0]) == 3: # become alive
+                # if all the same, return it
+                nonzero = np.nonzero(kernel)
+                if len(set([kernel[nonzero[0][n], nonzero[1][n]] for n in range(len(nonzero[0]))])) == 1:
+                    return np.max(kernel)
+                else: # if mixed
+                    if kernel[1,1] == 4:
+                        self.parent.game_over = True # this should hopefully be temporary
+                    return 3
+            else: # stay dead
+                return 0
+        else: # if living
+            if len(np.nonzero(kernel)[0]) in (3,4): # stay alive
+                return kernel[1,1]
+            else: # die
                 if kernel[1,1] == 4:
-                    game_over = True
-                return 3
-        else: # stay dead
-            return 0
-    else: # if living
-        if len(np.nonzero(kernel)[0]) in (3,4): # stay alive
-            return kernel[1,1]
-        else: # die
-            if kernel[1,1] == 4:
-                game_over = True
-            return 0
+                    self.parent.game_over = True # this should hopefully be temporary
+                return 0
 
 
 
 
-def handle_game_events(events):
-    """top level function to delegate events"""
-    for event in events:
-        if event.type in (pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN) and event.button in (1, 3): # left/right click
-            handle_game_click(event)
-        elif event.type == pygame.KEYDOWN: # various keys
-            if event.key == pygame.K_SPACE:
-                if not game_over:
-                    global time_on
-                    time_on = not time_on # flip time_on on space press
-            elif event.key == pygame.K_ESCAPE: # currently returns to menu, eventually run open_escape()
-                global ingame
-                ingame = False
-        elif event.type == pygame.QUIT: # if x is clicked on top right of window
-            pygame.quit()
-            quit()
+class Game:
+    """Main game class to handle events and general gameplay"""
+    def __init__(self, surface, grid, build_area):
+        self.surface = surface
+        self.grid = Grid(grid, self)
+        self.build_area = build_area
+        self.time_on = False
+        self.game_over = False
+        self.ingame = True
+        self.start_time = time.perf_counter()
+        self.cycles = 1
 
+    def main(self):
+        self.surface.fill((240, 240, 240))
+        pygame.draw.rect(self.surface, BUILD_COLOUR, self.build_area)
+        while self.ingame:
+            # get events
+            self.handle_events(pygame.event.get())
 
-def handle_game_click(click):
-    """Find click target and execute"""
-    # determine what was clicked
-    # only do if time is stopped
-    if not time_on:
-        # if click is within build area
-        if build_area.collidepoint(click.pos):
-            coords = [int((axis - border_width)/cell_size + 2) for axis in click.pos[::-1]]
-            if click.type == pygame.MOUSEBUTTONDOWN and click.button == 1 and grid[coords[0], coords[1]] == 0: # when left click
-                grid[coords[0], coords[1]] = 1 # if the clicked cell is dead, make it a player owned cell
-            if click.type == pygame.MOUSEBUTTONDOWN and click.button == 3:
-                if grid[coords[0], coords[1]] == 1: # if the clicked cell is player owned, make it dead
-                    grid[coords[0], coords[1]] = 0
+            if time.perf_counter() - self.start_time - self.cycles * tickrate > 0: # true every 'tickrate' seconds
+                self.cycles += 1
+                if self.time_on: # only run update logic if time is turned on
+                    self.grid.array = self.grid.update_grid()
+                    if self.game_over: self.time_on = False # stop time permanently on game end
 
+            self.draw_grid()
+            time.sleep(0.01) # events will rarely happen multiple times in 1/100 of a second
+    
+    def handle_events(self, events):
+        """top level function to delegate events"""
+        for event in events:
+            if event.type in (pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN) and event.button in (1, 3): # left/right click
+                self.handle_click(event)
+            elif event.type == pygame.KEYDOWN: # various keys
+                if event.key == pygame.K_SPACE:
+                    if not self.game_over:
+                        self.time_on = not self.time_on # flip time_on on space press
+                elif event.key == pygame.K_ESCAPE: # currently returns to menu, eventually run open_escape()
+                    self.ingame = False
+            elif event.type == pygame.QUIT: # if x is clicked on top right of window
+                pygame.quit()
+                quit()
+    
+    def handle_click(self, click):
+        """Find click target and execute"""
+        # determine what was clicked
+        # only do if time is stopped
+        if not self.time_on:
+            # if click is within build area
+            if self.build_area.collidepoint(click.pos):
+                coords = [int((axis - border_width)/cell_size + 2) for axis in click.pos[::-1]]
+                if click.type == pygame.MOUSEBUTTONDOWN and click.button == 1 and self.grid.array[coords[0], coords[1]] == 0: # when left click
+                    self.grid.array[coords[0], coords[1]] = 1 # if the clicked cell is dead, make it a player owned cell
+                if click.type == pygame.MOUSEBUTTONDOWN and click.button == 3:
+                    if self.grid.array[coords[0], coords[1]] == 1: # if the clicked cell is player owned, make it dead
+                        self.grid.array[coords[0], coords[1]] = 0
 
-def open_escape():
-    """open menu on esc key press"""
-    # nonfunctional -  eventually for potential escape menu ingame
-    pass
-
-
-
-def draw_grid():
-    """draw visible grid on pygame window"""
-    for x in range(grid.shape[1] - 4):     # draw rectangles for each xy pair
-        for y in range(grid.shape[0] - 4): # will need to be reworked if screen is made dragable
-            draw_x = x * cell_size + border_width
-            draw_y = y * cell_size + border_width
-            rect = pygame.Rect(draw_x, draw_y, cell_size - 1, cell_size - 1)
-            pygame.draw.rect(window, colours[grid[y + 2, x + 2]], rect)
-
-
-
-def game(board, restrict_build=False):
-    """start a game"""
-    window.fill((240, 240, 240))
-    global build_area
-    if restrict_build:
-        build_area = pygame.Rect(border_width + cell_size*15, border_width, cell_size*15 - 1, cell_size*15 - 1)
-        pygame.draw.rect(window, (30, 240, 80), build_area)
-    else:
-        build_area = pygame.Rect(border_width, border_width, cell_size*30 - 1, cell_size*30 - 1)
-        pygame.draw.rect(window, (240, 240, 240), build_area)
-    # initialize basic game functions
-    global ingame, game_over, time_on
-    ingame = True
-    game_over = False
-    time_on = False
-    global grid
-    grid = board
-
-    start_time = time.perf_counter() # record when the game started running to handle
-    cycles = 1                       # grid updates when time is on
-    while ingame:
-        # get events
-        handle_game_events(pygame.event.get())
-
-        if time.perf_counter() - start_time - cycles * tickrate > 0: # true every 'tickrate' seconds
-            cycles += 1
-            if time_on: # only run update logic if time is turned on
-                grid = update_grid()
-                if game_over: time_on = False # stop time permanently on game end
-
-        draw_grid()
+    def draw_grid(self):
+        """draw visible grid on pygame window"""
+        for x in range(self.grid.array.shape[1] - 4):     # draw rectangles for each xy pair
+            for y in range(self.grid.array.shape[0] - 4): # will need to be reworked if screen is made dragable
+                draw_x = x * cell_size + border_width
+                draw_y = y * cell_size + border_width
+                rect = pygame.Rect(draw_x, draw_y, cell_size - 1, cell_size - 1)
+                pygame.draw.rect(self.surface, colours[self.grid.array[y + 2, x + 2]], rect)
         pygame.display.update()
-        time.sleep(0.01) # events will rarely happen multiple times in 1/100 of a second
+
+            
 
 
+class LevelEditor(Game):
+    """Please dear god for your sanity and mine don't try to figure this mess out
+    it spent 30 minutes trying to refactor it, because it's copy and pasted code from like 3 different stages of developement"""
+    def __init__(self, surface, grid, build_area):
+        Game.__init__(self, surface, grid, build_area)
 
-def level_edit(board = np.zeros((34, 34))):
-    """quickly bashed together level editor that prints grid to console
-    press s to save current grid as csv
-    running time is temporary, turning it back off resets grid to before time was turned on (intended)
-    mostly copy and paste from other funcs, purpose is to have a basic level editor to build test boards"""
-    window.fill((240, 240, 240))
-    global ingame, saved_grid, time_on, placeholder_grid
-    ingame = True
-    time_on = False
-    global grid
-    grid = board
-    start_time = time.perf_counter() # record when the game started running to handle
-    cycles = 1                       # grid updates when time is on
-    while ingame:
-        # get events
-        events = pygame.event.get()
+    def main(self):
+        self.surface.fill((240, 240, 240))
+        pygame.draw.rect(self.surface, BUILD_COLOUR, self.build_area)
+        while self.ingame:
+            # get events
+            self.handle_events(pygame.event.get())
+
+            if time.perf_counter() - self.start_time - self.cycles * tickrate > 0: # true every 'tickrate' seconds
+                self.cycles += 1
+                if self.time_on: # only run update logic if time is turned on
+                    self.grid.array = self.grid.update_grid()
+            self.draw_grid()
+            time.sleep(0.01)
+
+    def handle_events(self, events):
+        """I would strongly recommend not looking too hard at this. It's copy and pasted
+        code from like 3 stages of developement and has almost no comments"""
         for event in events:
             if event.type in (pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN) and event.button in (1, 3):
                 mouse_x, mouse_y = event.pos
                 # if click is within grid bounds
-                if border_width < mouse_x < border_width + (grid.shape[1] - 4) * cell_size and border_width < mouse_y < border_width + (grid.shape[0] - 4) * cell_size:
+                if border_width < mouse_x < border_width + (self.grid.array.shape[1] - 4) * cell_size and border_width < mouse_y < border_width + (self.grid.array.shape[0] - 4) * cell_size:
                     coords = [int((axis - border_width)/cell_size + 2) for axis in event.pos[::-1]]
-                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and grid[coords[0], coords[1]] < 4: # increment when left click
-                        grid[coords[0], coords[1]] += 1
-                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3 and grid[coords[0], coords[1]] > 0: # decrement when right click
-                        grid[coords[0], coords[1]] -= 1
+                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.grid.array[coords[0], coords[1]] < 4: # increment when left click
+                        self.grid.array[coords[0], coords[1]] += 1
+                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3 and self.grid.array[coords[0], coords[1]] > 0: # decrement when right click
+                        self.grid.array[coords[0], coords[1]] -= 1
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    if time_on == False:
-                        placeholder_grid = grid.copy()
+                    if self.time_on == False:
+                        self.placeholder_grid = self.grid.array.copy()
                     else:
-                        grid = placeholder_grid
-                    time_on = not time_on
+                        self.grid.array = self.placeholder_grid
+                    self.time_on = not self.time_on
                 elif event.key == pygame.K_ESCAPE:
-                    ingame = False
+                    self.ingame = False
                 elif event.key == pygame.K_s: # save as csv
-                    if time_on:
-                        np.savetxt('savedgrid.csv', placeholder_grid, '%1.0f', delimiter=",")
+                    if self.time_on:
+                        np.savetxt('savedgrid.csv', self.placeholder_grid, '%1.0f', delimiter=",")
                     else:
-                        np.savetxt('savedgrid.csv', grid, '%1.0f', delimiter=",")
+                        np.savetxt('savedgrid.csv', self.grid.array, '%1.0f', delimiter=",")
             elif event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
-        if time.perf_counter() - start_time - cycles * tickrate > 0: # true every 'tickrate' seconds
-            cycles += 1
-            if time_on: # only run update logic if time is turned on
-                grid = update_grid()
-        draw_grid()
-        pygame.display.update()
-        time.sleep(0.01)
+
+
 
 
 class Button(): # parent class for menu buttons
-    def __init__(self, text, rect, function, colour = GREY):
-        pygame.font.init()
+    def __init__(self, name, rect, colour = DEFAULT_BUTTON_COLOUR):
+        self.name = name
         self.rect = pygame.Rect(rect)
-        self.function = function
         self.colour = colour
-        self.text = text
+        pygame.font.init() # initialize and set font for label, will be removed later and replaced with graphics
         self.font = pygame.font.SysFont('Arial', 25)
+
     def draw(self, surface):
         pygame.draw.rect(surface, self.colour, self.rect)
-        surface.blit(self.font.render(self.text, True, (0,0,0)), self.rect[0:2])
+        surface.blit(self.font.render(self.name, True, (0,0,0)), self.rect[0:2])
+
+
+class LevelSelectButton(Button):
+    def __init__(self, name, rect, colour=DEFAULT_BUTTON_COLOUR):
+        Button.__init__(self, name, rect, colour)
+
+    def function(self): # function to execute when button is clicked
+        level_select.main()
+
+
+class LevelEditorButton(Button):
+    def __init__(self, name, rect, colour=DEFAULT_BUTTON_COLOUR):
+        Button.__init__(self, name, rect, colour)
+
+    def function(self): # function to execute when button is clicked
+        level_editor = LevelEditor(window, np.zeros((34, 34)), pygame.Rect(border_width + cell_size*15, border_width, cell_size*15 - 1, cell_size*15 - 1))
+        level_editor.main()
+    
+
+class EmptyLevelButton(Button):
+    def __init__(self, name, rect, colour=DEFAULT_BUTTON_COLOUR):
+        Button.__init__(self, name, rect, colour)
+
+    def function(self): # function to execute when button is clicked
+        game = Game(window, np.zeros((34, 34)), pygame.Rect(border_width, border_width, cell_size*30 - 1, cell_size*30 - 1))
+        game.main()
 
 
 class LevelButton(Button): # child class for buttons in level select submenu
-    def __init__(self, text, rect, filename, colour = GREY):
-        Button.__init__(self, text, rect, None, colour)
+    def __init__(self, name, rect, filename, colour = DEFAULT_BUTTON_COLOUR):
+        Button.__init__(self, name, rect, colour)
         self.filename = filename
-    def load(self):
+        
+    def function(self): # function to execute when button is clicked
         if self.filename == None: return
-        game(np.genfromtxt('levels/' + self.filename, delimiter=','), restrict_build=True)
-
-
-def init_buttons():
-    """initialize some button objects to easily draw them when a menu is active"""
-
-    global singleplayer_button, level_editor_button, empty_level_button
-    global demo, level_1, level_2, level_3, level_4, level_5
-    global levels
-    # main menu buttons with bounds and submenu function
-    singleplayer_button = Button('Singleplayer', (280,200,100,50), level_select)
-    level_editor_button = Button('Level Editor', (280,260,100,50), level_edit)
-    empty_level_button = Button('Empty Level', (280,320,100,50), game)
-    # level select buttons with bounds and filename to load
-    demo = LevelButton('Demo', (200,200,100,50), 'demo.csv')
-    level_1 = LevelButton('Level 1', (200,260,100,50), 'level_1.csv')
-    level_2 = LevelButton('Level 2', (200,320,100,50), 'level_2.csv')
-    level_3 = LevelButton('Unused', (360,200,100,50), None)
-    level_4 = LevelButton('Unused', (360,260,100,50), None)
-    level_5 = LevelButton('Unused', (360,320,100,50), None)
-    # levels list for later, probably init everything in here eventually
-    levels = [demo, level_1, level_2, level_3, level_4, level_5]
-
-
-def draw_main_menu():
-    """draw main menu with singleplayer, custom level/level editor, settings"""
-    window.fill((240, 240, 240))
-    singleplayer_button.draw(window)
-    level_editor_button.draw(window)
-    empty_level_button.draw(window)
-    pygame.display.update()
-
-
-def draw_level_select():
-    """level select screen with buttons for each level"""
-    window.fill((240, 240, 240))
-    demo.draw(window)
-    level_1.draw(window)
-    level_2.draw(window)
-    level_3.draw(window)
-    level_4.draw(window)
-    level_5.draw(window)
-    pygame.display.update()
-
-
-def menu():
-    """top level for menu"""
-    # initialize button objects
-    init_buttons()
-    draw_main_menu()
-    while True:
-        events = pygame.event.get()
-        for event in events:
-            if event.type in (pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN) and event.button in (1, 3):
-                # logic to find click target and execute it's function
-                if singleplayer_button.rect.collidepoint(event.pos):
-                    singleplayer_button.function()
-                elif level_editor_button.rect.collidepoint(event.pos):
-                    level_editor_button.function()
-                elif empty_level_button.rect.collidepoint(event.pos):
-                    empty_level_button.function(np.zeros((34, 34)))
-                draw_main_menu()
-            elif event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-        time.sleep(0.01)
-
-
-def level_select():
-    """submenu for level select"""
-    draw_level_select()
-    while True:
-        events = pygame.event.get()
-        for event in events:
-            if event.type in (pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN) and event.button in (1, 3):
-                # logic to find click target
-                for button in levels:
-                    if button.rect.collidepoint(event.pos):
-                        button.load()
-                draw_level_select()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    return
-            elif event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-        time.sleep(0.01)
+        game = Game(window , np.genfromtxt('levels/' + self.filename, delimiter=','), pygame.Rect(border_width + cell_size*15, border_width, cell_size*15 - 1, cell_size*15 - 1))
+        game.main()
 
 
 
-def main():
-    init_vars()
-    WINDOW_WIDTH = 660
-    WINDOW_HEIGHT = 660
-    global window
-    window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-    window.fill((240, 240, 240)) # white background
 
-    menu()
-    # level_edit(np.genfromtxt('levels/savedgrid.csv', delimiter=','))
-    
+class Menu:
+    """Abstract menu class"""
+    def __init__(self, surface, buttons):
+        self.buttons = buttons
+        self.surface = surface
 
-main() # at the top of the script are some init vars including tickrate (in seconds)
+    def main(self): # main event loop
+        self.draw()
+        while True:
+            events = pygame.event.get()
+            for event in events:
+                if event.type == pygame.MOUSEBUTTONUP and event.button in (1, 3):
+                    # find button and execute it's function
+                    for button in self.buttons:
+                        if button.rect.collidepoint(event.pos):
+                            button.function()
+                    self.draw()
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        return
+                elif event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+            time.sleep(0.01)
+
+    def draw(self):
+        """draw menu with buttons"""
+        self.surface.fill((240, 240, 240))
+        for button in self.buttons:
+            button.draw(self.surface)
+        pygame.display.update()
+
+
+class MainMenu(Menu):
+    def __init__(self, surface):
+        Menu.__init__(self, surface, self.init_buttons())
+
+    def init_buttons(self): # creates all buttons in the menu and returns them
+        return (
+            LevelSelectButton('Singleplayer', (280,200,100,50)),
+            LevelEditorButton('Level Editor', (280,260,100,50)),
+            EmptyLevelButton('Sandbox', (280,320,100,50))
+        )
+
+
+class LevelSelect(Menu):
+    def __init__(self, surface):
+        Menu.__init__(self, surface, self.init_buttons())
+
+    def init_buttons(self): # creates all buttons in the menu and returns them
+        return (
+            LevelButton('Demo', (200,200,100,50), 'demo.csv'),
+            LevelButton('Level 1', (200,260,100,50), 'level_1.csv'),
+            LevelButton('Level 2', (200,320,100,50), 'level_2.csv'),
+            LevelButton('Level 3', (360,200,100,50), 'level_3.csv'),
+            LevelButton('Unused', (360,260,100,50), None),
+            LevelButton('Unused', (360,320,100,50), None)
+        )
+
+
+
+WINDOW_WIDTH = 660
+WINDOW_HEIGHT = 660
+window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+window.fill((240, 240, 240)) # white background
+
+level_select = LevelSelect(window)
+main_menu = MainMenu(window)
+
+main_menu.main()
