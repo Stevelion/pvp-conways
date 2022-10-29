@@ -4,6 +4,7 @@ import numpy as np
 
 class Font:
     """turns characters and strings into 12 tall (including 3 underline spaces for p, g, q) characters
+    all coordinates are read (x, y)
     must be initialized first by creating a font object"""
     def __init__(self):
         uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -19,7 +20,42 @@ class Font:
         self.font[' '] = np.zeros((12,1))
         self.chars = uppers + lowers + numbers + ' '
 
-    def as_grid(self, input = str, size = tuple):
+    def arrange(self, text = str, width = int, spacing = 1):
+        """takes a text input, translates to gridfont, and adds text wrapping for large bodies of text
+        width is the maximum width of a line, spacing is the amount of cells in the gap between lines"""
+        text = text.split()
+        body = np.zeros((1, width)) # initialize an array to append to, will be removed later
+        n = 0
+        while n < len(text): # each loop creates a new row of text then appends it to the bottom
+            row = self.as_grid(text[n])
+            if row.shape[1] > width: # if a word in the text is too large for size, return a blank array
+                row = np.zeros((12, width)) # of the correct size to prevent crashing
+                break
+            n += 1
+            if not row.shape[1] > width - 3: # add a space if there is room (a space is 3 wide)
+                row = np.append(row, np.zeros((12,3)), 1)
+            while row.shape[1] < width and n < len(text):
+                word = self.as_grid(text[n])
+                if row.shape[1] + word.shape[1] > width: # if no room for next word
+                    break                                # break to end of line logic
+                row = np.append(row, word, 1) # add word to row
+                n += 1
+                if row.shape[1] > width - 3: # break if no room for space
+                    break
+                row = np.append(row, np.zeros((12,3)), 1) # add a space
+            if row.shape[1] < width: # fill in remaining whitespace
+                row = np.append(row, np.zeros((12, width - row.shape[1])), 1)
+            body = np.append(body, row, 0) # append row to body
+            body = np.append(body, np.zeros((spacing, width)), 0) # add whitespace between rows
+        body = np.delete(body, 0, 0) # remove initialization row
+        for r in range(spacing): # remove final row of spacing
+            body = np.delete(body, -1, 0)
+        return body
+
+            
+            
+
+    def as_grid(self, input = str):
         """returns input as an array of 1s and 0s drawing the characters
         size is minimum size of return array, passing (0,0) ignores this"""
         if input[0] in self.chars:
@@ -33,7 +69,7 @@ class Font:
                     array = np.append(array, self.font[char], 1)
                 else:
                     array = np.append(array, np.zeros((12,1)), 1)
-        return self.expand_grid(array, size) # expand array with 0s to minimum size if necessary
+        return array
 
     def expand_grid(self, array = np.ndarray, size = tuple):
         """expands array with 0s in all directions"""

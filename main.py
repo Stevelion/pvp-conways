@@ -193,14 +193,13 @@ class LevelEditor(Game):
 
 class LifeButton():
     """Abstract class for buttons that collapse into Conway's Game of Life sims when hovered"""
-    def __init__(self, name, rect, grid, background = DEFAULT_BUTTON_COLOUR):
-        self.name = name
+    def __init__(self, rect, grid, cell_size = 5, background = DEFAULT_BUTTON_COLOUR):
         self.rect = pygame.Rect(rect)
         self.grid = Grid(grid, self)
         self.background = background
         self.game_over = False
         self.hovered = False
-        self.cell_size = 5
+        self.cell_size = cell_size
         self.colours = COLOURS
     
     def function(self):
@@ -225,6 +224,20 @@ class LifeButton():
                 draw_y = y * self.cell_size + self.rect[1]
                 rect = pygame.Rect(draw_x, draw_y, self.cell_size, self.cell_size)
                 pygame.draw.rect(surface, self.colours[self.grid.array[y + 5, x + 5]], rect)
+
+
+
+class LifeTextBox(LifeButton):
+    def __init__(self, text, rect, cell_size = 2, background = DEFAULT_BUTTON_COLOUR):
+        grid_width = rect[2] // cell_size - 4
+        grid = font.arrange(text, grid_width)
+        grid = font.expand_grid(grid, (grid.shape[1] + 14, grid.shape[0] + 14))
+        np.savetxt('savedgrid.csv', grid, '%1.0f', delimiter=",")
+        LifeButton.__init__(self, rect, grid, cell_size, background)
+
+    def function():
+        return
+
 
 
 
@@ -280,14 +293,13 @@ class LifeMenu:
 
 
 
-
 class LevelSelectButton(LifeButton):
     def __init__(self):
-        name = 'Singleplayer'
+        text = 'Singleplayer'
         rect = (165,170,330,75)
-        grid = font.as_grid(name, (76,25))
-        print(grid.shape)
-        LifeButton.__init__(self, name, rect, grid)
+        grid = font.as_grid(text)
+        grid = font.expand_grid(grid, (76,25))
+        LifeButton.__init__(self, rect, grid)
 
     def function(self): # function to execute when button is clicked
         LifeButton.function(self)
@@ -296,10 +308,11 @@ class LevelSelectButton(LifeButton):
 
 class LevelEditorButton(LifeButton):
     def __init__(self):
-        name = 'Level Editor'
+        text = 'Level Editor'
         rect = (165,275,330,75)
-        grid = font.as_grid(name, (76,25))
-        LifeButton.__init__(self, name, rect, grid)
+        grid = font.as_grid(text)
+        grid = font.expand_grid(grid, (76,25))
+        LifeButton.__init__(self, rect, grid)
 
     def function(self): # function to execute when button is clicked
         LifeButton.function(self)
@@ -309,10 +322,11 @@ class LevelEditorButton(LifeButton):
 
 class SandboxButton(LifeButton):
     def __init__(self):
-        name = 'Sandbox'
+        text = 'Sandbox'
         rect = (165,380,330,75)
-        grid = font.as_grid(name, (76,25))
-        LifeButton.__init__(self, name, rect, grid)
+        grid = font.as_grid(text)
+        grid = font.expand_grid(grid, (76,25))
+        LifeButton.__init__(self, rect, grid)
 
     def function(self): # function to execute when button is clicked
         LifeButton.function(self)
@@ -321,9 +335,10 @@ class SandboxButton(LifeButton):
 
 
 class LevelButton(LifeButton): # child class for buttons in level select submenu
-    def __init__(self, name, rect, filename):
-        grid = font.as_grid(name, (60,25))
-        LifeButton.__init__(self, name, rect, grid)
+    def __init__(self, text, rect, filename):
+        grid = font.as_grid(text)
+        grid = font.expand_grid(grid, (60,25))
+        LifeButton.__init__(self, rect, grid)
         self.filename = filename
         
     def function(self): # function to execute when button is clicked
@@ -331,7 +346,6 @@ class LevelButton(LifeButton): # child class for buttons in level select submenu
         if self.filename == None: return
         game = Game(window , np.genfromtxt('levels/' + self.filename, delimiter=','), pygame.Rect(border_width + cell_size*15, border_width, cell_size*15 - 1, cell_size*15 - 1))
         game.main()
-
 
 
 
@@ -343,7 +357,9 @@ class MainMenu(LifeMenu):
         return (
             LevelSelectButton(),
             LevelEditorButton(),
-            SandboxButton()
+            SandboxButton(),
+            LifeTextBox("Welcome to the Game of Life",
+                        (196,40,268,28), cell_size=2)
         )
 
 
@@ -366,7 +382,7 @@ class LevelSelect(LifeMenu):
 WINDOW_WIDTH = 660
 WINDOW_HEIGHT = 660
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-window.fill(BACKGROUND_COLOUR) # white background
+window.fill(BACKGROUND_COLOUR)
 
 font = gridfont.Font()
 
