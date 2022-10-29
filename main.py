@@ -255,10 +255,11 @@ class LifeMenu:
                 if event.type == pygame.MOUSEBUTTONUP and event.button in (1, 3):
                     # find button and execute it's function
                     for button in self.buttons:
-                        if button.rect.collidepoint(event.pos):
-                            button.function()
-                    self.restart_timer()
-                    self.draw()
+                        if isinstance(button, LifeButton):
+                            if button.rect.collidepoint(event.pos):
+                                button.function()
+                                self.restart_timer()
+                                self.draw()
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         return
@@ -273,7 +274,7 @@ class LifeMenu:
                 self.draw()
             time.sleep(0.01)
     
-    def restart_timer(self):
+    def restart_timer(self): # causes issues if a button doesn't open a menu, adjust start time (modulo maybe)
         """restart update timer"""
         self.start_time = time.perf_counter()
         self.cycles = 1
