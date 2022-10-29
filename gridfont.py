@@ -20,7 +20,7 @@ class Font:
         self.font[' '] = np.zeros((12,1))
         self.chars = uppers + lowers + numbers + ' '
 
-    def arrange(self, text = str, width = int, spacing = 1):
+    def arrange(self, text = str, width = int, spacing = 1, centered = False):
         """takes a text input, translates to gridfont, and adds text wrapping for large bodies of text
         width is the maximum width of a line, spacing is the amount of cells in the gap between lines"""
         text = text.split()
@@ -43,8 +43,12 @@ class Font:
                 if row.shape[1] > width - 3: # break if no room for space
                     break
                 row = np.append(row, np.zeros((12,3)), 1) # add a space
-            if row.shape[1] < width: # fill in remaining whitespace
+            if not centered and row.shape[1] < width: # fill in remaining whitespace at end
                 row = np.append(row, np.zeros((12, width - row.shape[1])), 1)
+            elif centered:
+                while not np.sum(row[:,-1]): # repeat until last column is not empty
+                    row = np.delete(row, -1, 1) # delete last column
+                row = self.expand_grid(row, (width, 0)) # fill in whitespace on both sides
             body = np.append(body, row, 0) # append row to body
             body = np.append(body, np.zeros((spacing, width)), 0) # add whitespace between rows
         body = np.delete(body, 0, 0) # remove initialization row
