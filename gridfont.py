@@ -19,25 +19,6 @@ class Font:
         self.font[' '] = np.zeros((12,1))
         self.chars = uppers + lowers + numbers + ' '
 
-    # def as_grid(self, input = str, size = tuple):
-    #     if len(input) == 1:
-    #         if input in self.chars:
-    #             array = self.font[input]
-    #         else:
-    #             array = np.zeros((12,1))
-    #     else:
-    #         if input[0] in self.chars:
-    #             array = self.font[input[0]]
-    #             for char in input[1:]:
-    #                 if char in self.chars:
-    #                     array = np.append(array, np.zeros((12,1)), 1)
-    #                     array = np.append(array, self.font[char], 1)
-    #                 else:
-    #                     array = np.append(array, np.zeros((12,1)), 1)
-    #         else:
-    #             array = np.zeros((12,1))
-    #     return self.expand_grid(array, size)
-
     def as_grid(self, input = str, size = tuple):
         """returns input as an array of 1s and 0s drawing the characters
         size is minimum size of return array, passing (0,0) ignores this"""
@@ -73,7 +54,3 @@ class Font:
             if y_expand * 2 != (size[1] - array.shape[0]): # check for odd lost in int division
                 new_array = np.append(new_array, np.zeros((1, new_array.shape[1])), 0)
         return new_array
-
-font = Font()
-
-np.savetxt('savedgrid.csv', font.as_grid('This is a TEST', (0,0)), '%1.0f', delimiter=",")

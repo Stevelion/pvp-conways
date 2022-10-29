@@ -1,6 +1,7 @@
 import numpy as np
 import pygame
 import time
+import gridfont
 # import subprocess # potentially for file management later
 
 cell_size = 20 # pixels
@@ -11,6 +12,7 @@ COLOURS = {0 : (0, 0, 0), 1 : (0, 0, 255), 2 : (255, 0, 0), 3 : (225, 115, 20), 
 BUILD_COLOUR = (30, 240, 80)
 DEFAULT_BUTTON_COLOUR = (180,180,180)
 BACKGROUND_COLOUR = (240,240,240)
+BLACK = (0,0,0)
 
 
 
@@ -282,8 +284,9 @@ class LifeMenu:
 class LevelSelectButton(LifeButton):
     def __init__(self):
         name = 'Singleplayer'
-        rect = (195,170,270,55)
-        grid = np.genfromtxt('buttons/singleplayer.csv', delimiter=',')
+        rect = (165,170,330,75)
+        grid = font.as_grid(name, (76,25))
+        print(grid.shape)
         LifeButton.__init__(self, name, rect, grid)
 
     def function(self): # function to execute when button is clicked
@@ -294,8 +297,8 @@ class LevelSelectButton(LifeButton):
 class LevelEditorButton(LifeButton):
     def __init__(self):
         name = 'Level Editor'
-        rect = (195,255,270,55)
-        grid = np.genfromtxt('buttons/level_editor.csv', delimiter=',')
+        rect = (165,275,330,75)
+        grid = font.as_grid(name, (76,25))
         LifeButton.__init__(self, name, rect, grid)
 
     def function(self): # function to execute when button is clicked
@@ -304,11 +307,11 @@ class LevelEditorButton(LifeButton):
         level_editor.main()
     
 
-class EmptyLevelButton(LifeButton):
+class SandboxButton(LifeButton):
     def __init__(self):
         name = 'Sandbox'
-        rect = (195,340,270,55)
-        grid = np.genfromtxt('buttons/empty_level.csv', delimiter=',')
+        rect = (165,380,330,75)
+        grid = font.as_grid(name, (76,25))
         LifeButton.__init__(self, name, rect, grid)
 
     def function(self): # function to execute when button is clicked
@@ -319,7 +322,7 @@ class EmptyLevelButton(LifeButton):
 
 class LevelButton(LifeButton): # child class for buttons in level select submenu
     def __init__(self, name, rect, filename):
-        grid = np.zeros((15,26))
+        grid = font.as_grid(name, (60,25))
         LifeButton.__init__(self, name, rect, grid)
         self.filename = filename
         
@@ -334,28 +337,28 @@ class LevelButton(LifeButton): # child class for buttons in level select submenu
 
 class MainMenu(LifeMenu):
     def __init__(self, surface):
-        LifeMenu.__init__(self, surface, (0,0,0), self.init_buttons())
+        LifeMenu.__init__(self, surface, BLACK, self.init_buttons())
 
     def init_buttons(self): # creates all buttons in the menu and returns them
         return (
             LevelSelectButton(),
             LevelEditorButton(),
-            EmptyLevelButton()
+            SandboxButton()
         )
 
 
 class LevelSelect(LifeMenu):
     def __init__(self, surface):
-        LifeMenu.__init__(self, surface, BACKGROUND_COLOUR, self.init_buttons())
+        LifeMenu.__init__(self, surface, BLACK, self.init_buttons())
 
     def init_buttons(self): # creates all buttons in the menu and returns them
         return (
-            LevelButton('Demo', (200,200,110,55), 'demo.csv'),
-            LevelButton('Level 1', (200,320,110,55), 'level_1.csv'),
-            LevelButton('Level 2', (200,430,110,55), 'level_2.csv'),
-            LevelButton('Level 3', (350,200,110,55), 'level_3.csv'),
-            LevelButton('Unused', (350,320,110,55), None),
-            LevelButton('Unused', (350,430,110,55), None)
+            LevelButton('Demo', (60,180,250,75), 'demo.csv'),
+            LevelButton('Level 1', (60,295,250,75), 'level_1.csv'),
+            LevelButton('Level 2', (60,400,250,75), 'level_2.csv'),
+            LevelButton('Level 3', (350,180,250,75), 'level_3.csv'),
+            LevelButton('Unused', (350,295,250,75), None),
+            LevelButton('Unused', (350,400,250,75), None)
         )
 
 
@@ -364,6 +367,8 @@ WINDOW_WIDTH = 660
 WINDOW_HEIGHT = 660
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 window.fill(BACKGROUND_COLOUR) # white background
+
+font = gridfont.Font()
 
 level_select = LevelSelect(window)
 main_menu = MainMenu(window)
