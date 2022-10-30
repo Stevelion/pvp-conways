@@ -1,7 +1,7 @@
 import numpy as np
 import pygame
 import time
-import gridfont
+from gridfont import font
 # import subprocess # potentially for file management later
 
 cell_size = 20 # pixels
@@ -9,10 +9,11 @@ border_width = 30 # pixels
 tickrate = 0.1 # seconds
 # owner: 0 = dead, 1 = player, 2 = enemy, 3 = shrapnel, 4 = what to defend/attack
 COLOURS = {0 : (0, 0, 0), 1 : (0, 0, 255), 2 : (255, 0, 0), 3 : (225, 115, 20), 4 : (140, 0, 200)}
+# some temporary colour definitions for easier GUI dev
 BUILD_COLOUR = (30, 240, 80)
 DEFAULT_BUTTON_COLOUR = (180,180,180)
 BACKGROUND_COLOUR = (240,240,240)
-BLACK = (0,0,0)
+BLACK, RED, GREEN, BLUE = (0,0,0), (255, 0, 0), (0,255,0), (0,0,255)
 
 
 
@@ -41,13 +42,7 @@ class Grid:
     def get_neighbors(self, array): # rolling algorithm to find neighbors
         self.top = np.roll(array, 1, 0)
         self.bottom = np.roll(array, -1, 0)
-        self.left = np.roll(array, 1, 1)
-        self.right = np.roll(array, -1, 1)
-        self.top_left = np.roll(self.top, 1, 1)
-        self.top_right = np.roll(self.top, -1, 1)
-        self.bottom_left = np.roll(self.bottom, 1, 1)
-        self.bottom_right = np.roll(self.bottom, -1, 1)
-        return self.top + self.bottom + self.left + self.right + self.top_left + self.top_right + self.bottom_left + self.bottom_right
+        return self.top + self.bottom + np.roll(array, 1, 1) + np.roll(array, -1, 1) + np.roll(self.top, 1, 1) + np.roll(self.top, -1, 1) + np.roll(self.bottom, 1, 1) + np.roll(self.bottom, -1, 1)
 
     def update_cell(self):
         self.array = self.new_living.astype(int)
@@ -197,16 +192,15 @@ class LevelEditor(Game):
 
 class LifeTextBox():
     """Abstract class for buttons that collapse into Conway's Game of Life sims when hovered"""
-    def __init__(self, text, rect, cell_size = 5, background = DEFAULT_BUTTON_COLOUR, centered = False, collapse = False):
+    def __init__(self, text, rect, cell_size = 5, background = DEFAULT_BUTTON_COLOUR, cell_colour = BLACK, centered = False, collapse = False):
         self.rect = pygame.Rect(rect)
         grid_width = rect[2] // cell_size - 4 # calculate width for font.arrange()
         array = font.arrange(text, grid_width, centered = centered) # turn text into array
         array = font.expand_grid(array, (array.shape[1] + 14, array.shape[0] + 14)) # expand array with 0s
         self.grid = Grid(array) # create grid object from array
         self.cell_size = cell_size
-        self.background = background
         self.collapse = collapse
-        self.colours = COLOURS
+        self.colours = {0 : background, 1 : cell_colour}
         self.hovered = False
         if self.collapse: # collapse rect dimensions to match grid
             self.rect.update(self.rect[0], self.rect[1],
@@ -234,8 +228,8 @@ class LifeTextBox():
 
 
 class LifeButton(LifeTextBox):
-    def __init__(self, text, rect, cell_size = 5, background = DEFAULT_BUTTON_COLOUR, centered = True):
-        LifeTextBox.__init__(self, text, rect, cell_size, centered, background)
+    def __init__(self, text, rect, cell_size = 5, background = BLACK, cell_colour = GREEN, centered = True):
+        LifeTextBox.__init__(self, text, rect, cell_size, background, cell_colour, centered)
     
     def function(self):
         self.hovered = False
@@ -354,7 +348,8 @@ class MainMenu(LifeMenu):
             LevelEditorButton(),
             SandboxButton(),
             LifeTextBox("Welcome to the Game of Life",
-                        (196,40,268,28), cell_size=2, centered=True),
+                        (196,40,268,28), cell_size=2, background = BLACK,
+                        cell_colour = GREEN, centered=True),
             TestButton()
         )
 
@@ -374,14 +369,13 @@ class LevelSelect(LifeMenu):
         )
 
 
-
 class TestMenu(LifeMenu): # Test menu for GridFont
     def __init__(self, surface):
         LifeMenu.__init__(self, surface, BLACK, self.init_buttons())
 
     def init_buttons(self): # creates all buttons in the menu and returns them
         return (
-            LifeTextBox(font.inventory, (50,80,600,500), cell_size=4, collapse=True),
+            LifeTextBox(font.inventory, (30,30,600,600), cell_size=1, background = BLACK, cell_colour = BLUE, collapse=True),
         )
 
 class TestButton(LifeButton):
@@ -399,8 +393,6 @@ WINDOW_WIDTH = 660
 WINDOW_HEIGHT = 660
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 window.fill(BACKGROUND_COLOUR)
-
-font = gridfont.Font()
 
 level_select = LevelSelect(window)
 main_menu = MainMenu(window)

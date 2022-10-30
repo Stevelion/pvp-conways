@@ -57,9 +57,6 @@ class Font:
             body = np.delete(body, -1, 0)
         return body
 
-            
-            
-
     def as_grid(self, input = str):
         """returns input as an array of 1s and 0s drawing the characters
         size is minimum size of return array, passing (0,0) ignores this"""
@@ -95,3 +92,6 @@ class Font:
             if y_expand * 2 != (size[1] - array.shape[0]): # check for odd lost in int division
                 new_array = np.append(new_array, np.zeros((1, new_array.shape[1])), 0)
         return new_array
+
+
+font = Font()
