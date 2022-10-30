@@ -18,52 +18,60 @@ BLACK = (0,0,0)
 
 class Grid:
     """Abstract class that evaluates CGoL logic on an array"""
-    def __init__(self, array, parent):
+    def __init__(self, array):
         self.array = array
-        self.parent = parent
-    
+
     def update_grid(self):
-        """handle updating the grid with CGoL logic every game tick while time is on"""
-        self.new_array = self.array.copy()
-        relevants = set()
-        nonzero = np.nonzero(self.array) # find living (nonzero) cells
-        alive = [(nonzero[0][n], nonzero[1][n]) for n in range(len(nonzero[0]))] # convert np.nonzero output into list of coordinate tuples
-        for living in alive: # find all cells adjacent to a living cell
-            for y in range(-1, 2):
-                for x in range(-1, 2):
-                    relevants.add((living[0] + y, living[1] + x))
-        for cell in relevants:
-            self.new_array[cell] = self.update_cell(self.array[cell[0]-1:cell[0]+2, cell[1]-1:cell[1]+2]) # pass 3x3 around cell to update_cell()
+        self.bool_array = self.array.astype(bool)
+        self.living = self.bool_array.astype(int) # convert to binary
+        self.neighbors = self.get_neighbors(self.living)
+        self.has_2or3 = np.logical_and(np.greater(self.neighbors, np.ones(self.neighbors.shape) * 1), np.less(self.neighbors, np.ones(self.neighbors.shape) * 4))
+        self.has_3 = np.logical_and(self.has_2or3, np.greater(self.neighbors, np.ones(self.neighbors.shape) * 2))
+        self.become_living = np.logical_and(np.logical_not(self.living.astype(bool)), self.has_3)
+        self.stay_living = np.logical_and(self.living.astype(bool), self.has_2or3)
+        self.new_living = np.logical_or(self.become_living, self.stay_living)
         # clean up edges
         for n in range(2):
-            self.new_array[n, :] = self.array[n, :] * 0
-            self.new_array[-n-1, :] = self.array[-n-1, :] * 0
-            self.new_array[:, n] = self.array[:, n] * 0
-            self.new_array[:, -n-1] = self.array[:, -n-1] * 0
-        self.array = self.new_array
+            self.new_living[n, :] = self.new_living[n, :] * 0
+            self.new_living[-n-1, :] = self.new_living[-n-1, :] * 0
+            self.new_living[:, n] = self.new_living[:, n] * 0
+            self.new_living[:, -n-1] = self.new_living[:, -n-1] * 0
+        self.update_cell()
+    
+    def get_neighbors(self, array): # rolling algorithm to find neighbors
+        self.top = np.roll(array, 1, 0)
+        self.bottom = np.roll(array, -1, 0)
+        self.left = np.roll(array, 1, 1)
+        self.right = np.roll(array, -1, 1)
+        self.top_left = np.roll(self.top, 1, 1)
+        self.top_right = np.roll(self.top, -1, 1)
+        self.bottom_left = np.roll(self.bottom, 1, 1)
+        self.bottom_right = np.roll(self.bottom, -1, 1)
+        return self.top + self.bottom + self.left + self.right + self.top_left + self.top_right + self.bottom_left + self.bottom_right
 
-    def update_cell(self, kernel):
-        """basic CGoL logic for a cell
-        kernel refers to the 3x3 of cells around the currently focused cell"""
-        if kernel[1,1] == 0: # if dead
-            if len(np.nonzero(kernel)[0]) == 3: # become alive
-                # if all the same, return it
-                nonzero = np.nonzero(kernel)
-                if len(set([kernel[nonzero[0][n], nonzero[1][n]] for n in range(len(nonzero[0]))])) == 1:
-                    return np.max(kernel)
-                else: # if mixed
-                    if kernel[1,1] == 4:
-                        self.parent.game_over = True # this should hopefully be temporary
-                    return 3
-            else: # stay dead
-                return 0
-        else: # if living
-            if len(np.nonzero(kernel)[0]) in (3,4): # stay alive
-                return kernel[1,1]
-            else: # die
-                if kernel[1,1] == 4:
-                    self.parent.game_over = True # this should hopefully be temporary
-                return 0
+    def update_cell(self):
+        self.array = self.new_living.astype(int)
+
+
+
+class ColouredGrid(Grid):
+    def __init__(self, array):
+        Grid.__init__(self, array)
+    
+    def update_cell(self):
+        """partially copy and pasted code from old Grid class, however it now only runs on cells that become alive, not all cells that could
+        change state"""
+        self.new_living_indices = np.nonzero(self.become_living) # get indices of cells becoming alive
+        self.new_array = self.array.copy() * self.new_living.astype(int) # remove dying cells from new array
+        for n in range(len(self.new_living_indices[0])): # for each cell, create a 3x3 kernel around it, then use it to determine colour
+            kernel = self.array[self.new_living_indices[0][n]-1:self.new_living_indices[0][n]+2, self.new_living_indices[1][n]-1:self.new_living_indices[1][n]+2]
+            nonzero = np.nonzero(kernel)
+            # # if all neighbors the same, return it
+            if len(set([kernel[nonzero[0][n], nonzero[1][n]] for n in range(len(nonzero[0]))])) == 1:
+                self.new_array[self.new_living_indices[0][n], self.new_living_indices[1][n]] = np.max(kernel)
+            else: # if not all neighbors the same, return 3 (debris)
+                self.new_array[self.new_living_indices[0][n], self.new_living_indices[1][n]] = 3
+        self.array = self.new_array
 
 
 
@@ -72,10 +80,9 @@ class Game:
     """Main game class to handle events and general gameplay"""
     def __init__(self, surface, grid, build_area):
         self.surface = surface
-        self.grid = Grid(grid, self)
+        self.grid = ColouredGrid(grid)
         self.build_area = build_area
         self.time_on = False
-        self.game_over = False
         self.ingame = True
         self.cycles = 1
 
@@ -90,7 +97,6 @@ class Game:
                 self.cycles += 1
                 if self.time_on: # only run update logic if time is turned on
                     self.grid.update_grid()
-                    if self.game_over: self.time_on = False # stop time permanently on game end
             self.draw_grid()
             time.sleep(0.01) # events will rarely happen multiple times in 1/100 of a second
     
@@ -101,8 +107,7 @@ class Game:
                 self.handle_click(event)
             elif event.type == pygame.KEYDOWN: # various keys
                 if event.key == pygame.K_SPACE:
-                    if not self.game_over:
-                        self.time_on = not self.time_on # flip time_on on space press
+                    self.time_on = not self.time_on # flip time_on on space press
                 elif event.key == pygame.K_ESCAPE: # currently returns to menu, eventually run open_escape()
                     self.ingame = False
             elif event.type == pygame.QUIT: # if x is clicked on top right of window
@@ -192,17 +197,21 @@ class LevelEditor(Game):
 
 class LifeTextBox():
     """Abstract class for buttons that collapse into Conway's Game of Life sims when hovered"""
-    def __init__(self, text, rect, cell_size = 5, centered = False, background = DEFAULT_BUTTON_COLOUR):
+    def __init__(self, text, rect, cell_size = 5, background = DEFAULT_BUTTON_COLOUR, centered = False, collapse = False):
         self.rect = pygame.Rect(rect)
         grid_width = rect[2] // cell_size - 4 # calculate width for font.arrange()
-        grid = font.arrange(text, grid_width, centered = centered) # turn text into array
-        grid = font.expand_grid(grid, (grid.shape[1] + 14, grid.shape[0] + 14)) # expand array with 0s
-        self.grid = Grid(grid, self) # create grid object from array
+        array = font.arrange(text, grid_width, centered = centered) # turn text into array
+        array = font.expand_grid(array, (array.shape[1] + 14, array.shape[0] + 14)) # expand array with 0s
+        self.grid = Grid(array) # create grid object from array
         self.cell_size = cell_size
         self.background = background
+        self.collapse = collapse
         self.colours = COLOURS
-        self.game_over = False # unused var needed for compatability with Grid class
         self.hovered = False
+        if self.collapse: # collapse rect dimensions to match grid
+            self.rect.update(self.rect[0], self.rect[1],
+                            (self.grid.array.shape[1] - 10) * self.cell_size,
+                            (self.grid.array.shape[0] - 10) * self.cell_size)
 
     def update(self):
         self.grid.update_grid()
@@ -224,9 +233,8 @@ class LifeTextBox():
                 pygame.draw.rect(surface, self.colours[self.grid.array[y + 5, x + 5]], rect)
 
 
-
 class LifeButton(LifeTextBox):
-    def __init__(self, text, rect, cell_size = 5, centered = True, background = DEFAULT_BUTTON_COLOUR):
+    def __init__(self, text, rect, cell_size = 5, background = DEFAULT_BUTTON_COLOUR, centered = True):
         LifeTextBox.__init__(self, text, rect, cell_size, centered, background)
     
     def function(self):
@@ -346,7 +354,8 @@ class MainMenu(LifeMenu):
             LevelEditorButton(),
             SandboxButton(),
             LifeTextBox("Welcome to the Game of Life",
-                        (196,40,268,28), cell_size=2, centered=True)
+                        (196,40,268,28), cell_size=2, centered=True),
+            TestButton()
         )
 
 
@@ -366,6 +375,26 @@ class LevelSelect(LifeMenu):
 
 
 
+class TestMenu(LifeMenu): # Test menu for GridFont
+    def __init__(self, surface):
+        LifeMenu.__init__(self, surface, BLACK, self.init_buttons())
+
+    def init_buttons(self): # creates all buttons in the menu and returns them
+        return (
+            LifeTextBox(font.inventory, (50,80,600,500), cell_size=4, collapse=True),
+        )
+
+class TestButton(LifeButton):
+    def __init__(self):
+        text = 'Test Menu'
+        rect = (165,485,330,75)
+        LifeButton.__init__(self, text, rect)
+
+    def function(self): # function to execute when button is clicked
+        LifeButton.function(self)
+        test_menu.main()
+
+
 WINDOW_WIDTH = 660
 WINDOW_HEIGHT = 660
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -375,5 +404,7 @@ font = gridfont.Font()
 
 level_select = LevelSelect(window)
 main_menu = MainMenu(window)
+
+test_menu = TestMenu(window)
 
 main_menu.main()

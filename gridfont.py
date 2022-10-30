@@ -19,6 +19,7 @@ class Font:
             self.font[char] = np.genfromtxt('font/numbers/' + char + '.csv', delimiter=',')
         self.font[' '] = np.zeros((12,1))
         self.chars = uppers + lowers + numbers + ' '
+        self.inventory = 'Aa Bb Cc Dd Ee Ff Gg Hh Ii Jj Kk Ll Mm Nn Oo Pp Qq Rr Ss Tt Uu Vv Ww Xx Yy Zz 0123456789'
 
     def arrange(self, text = str, width = int, spacing = 1, centered = False):
         """takes a text input, translates to gridfont, and adds text wrapping for large bodies of text
