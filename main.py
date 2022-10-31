@@ -31,13 +31,13 @@ class Grid:
         self.become_living = np.logical_and(np.logical_not(self.living.astype(bool)), self.has_3)
         self.stay_living = np.logical_and(self.living.astype(bool), self.has_2or3)
         self.new_living = np.logical_or(self.become_living, self.stay_living)
+        self.update_cell()
         # clean up edges
         for n in range(2):
-            self.new_living[n, :] = self.new_living[n, :] * 0
-            self.new_living[-n-1, :] = self.new_living[-n-1, :] * 0
-            self.new_living[:, n] = self.new_living[:, n] * 0
-            self.new_living[:, -n-1] = self.new_living[:, -n-1] * 0
-        self.update_cell()
+            self.array[n, :] = self.array[n, :] * 0
+            self.array[-n-1, :] = self.array[-n-1, :] * 0
+            self.array[:, n] = self.array[:, n] * 0
+            self.array[:, -n-1] = self.array[:, -n-1] * 0
     
     def get_neighbors(self, array): # rolling algorithm to find neighbors
         self.top = np.roll(array, 1, 0)
