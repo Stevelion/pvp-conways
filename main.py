@@ -26,9 +26,9 @@ class Grid:
         self.bool_array = self.array.astype(bool)
         self.living = self.bool_array.astype(int) # convert to binary
         self.neighbors = self.get_neighbors(self.living)
-        self.has_2or3 = np.logical_and(np.greater(self.neighbors, np.ones(self.neighbors.shape) * 1), np.less(self.neighbors, np.ones(self.neighbors.shape) * 4))
-        self.has_3 = np.logical_and(self.has_2or3, np.greater(self.neighbors, np.ones(self.neighbors.shape) * 2))
-        self.become_living = np.logical_and(np.logical_not(self.living.astype(bool)), self.has_3)
+        self.has_3 = np.equal(self.neighbors, 3)
+        self.has_2or3 = np.logical_or(self.has_3, np.equal(self.neighbors, 2))
+        self.become_living = np.logical_and(self.has_3, np.logical_not(self.living.astype(bool)))
         self.stay_living = np.logical_and(self.living.astype(bool), self.has_2or3)
         self.new_living = np.logical_or(self.become_living, self.stay_living)
         self.update_cell()
