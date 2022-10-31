@@ -80,6 +80,10 @@ class Game:
         self.time_on = False
         self.ingame = True
         self.cycles = 1
+        self.cell_size = cell_size
+        self.tickrate = tickrate
+        self.border_width = border_width
+        self.colours = COLOURS
 
     def main(self):
         self.start_time = time.perf_counter()
@@ -92,7 +96,7 @@ class Game:
                 self.cycles += 1
                 if self.time_on: # only run update logic if time is turned on
                     self.grid.update_grid()
-            self.draw_grid()
+            self.draw()
             time.sleep(0.01) # events will rarely happen multiple times in 1/100 of a second
     
     def handle_events(self, events):
@@ -116,24 +120,24 @@ class Game:
         if not self.time_on:
             # if click is within build area
             if self.build_area.collidepoint(click.pos):
-                coords = [int((axis - border_width)/cell_size + 2) for axis in click.pos[::-1]]
+                coords = [int((axis - self.border_width)/cell_size + 2) for axis in click.pos[::-1]]
                 if click.type == pygame.MOUSEBUTTONDOWN and click.button == 1 and self.grid.array[coords[0], coords[1]] == 0: # when left click
                     self.grid.array[coords[0], coords[1]] = 1 # if the clicked cell is dead, make it a player owned cell
                 if click.type == pygame.MOUSEBUTTONDOWN and click.button == 3:
                     if self.grid.array[coords[0], coords[1]] == 1: # if the clicked cell is player owned, make it dead
                         self.grid.array[coords[0], coords[1]] = 0
 
-    def draw_grid(self):
+    def draw(self):
         """draw visible grid on pygame window"""
-        for x in range(self.grid.array.shape[1] - 4):     # draw rectangles for each xy pair
-            for y in range(self.grid.array.shape[0] - 4): # will need to be reworked if screen is made dragable
-                draw_x = x * cell_size + border_width
-                draw_y = y * cell_size + border_width
-                rect = pygame.Rect(draw_x, draw_y, cell_size - 1, cell_size - 1)
-                pygame.draw.rect(self.surface, COLOURS[self.grid.array[y + 2, x + 2]], rect)
+        mask_list = [np.equal(self.grid.array, n) for n in range(5)] # create boolean masks for each type of cell (0 through 4)
+        # the next line is very densely packed to avoid wasteful memory intensive copies of potentially million item arrays. There is an explanation for how it works in commit Alpha v1.6
+        pixel_array = sum([np.asarray(self.colours[n]) * np.transpose(np.broadcast_to(mask_list[n][:,:,None], (mask_list[n].shape[0], mask_list[n].shape[1], 3)), (1,0,2)) for n in range(5)])
+        pixel_surf = pygame.surfarray.make_surface(pixel_array[2:-2,2:-2,:]) # make surface, excluding outer 5 rows/columns
+        pixel_surf = pygame.transform.scale(pixel_surf, (pixel_surf.get_size()[0]*self.cell_size, pixel_surf.get_size()[1]*self.cell_size)) # scale by cell size
+        self.surface.blit(pixel_surf, (self.border_width, self.border_width)) # draw
         pygame.display.update()
 
-            
+
 
 
 class LevelEditor(Game):
@@ -154,7 +158,7 @@ class LevelEditor(Game):
                 self.cycles += 1
                 if self.time_on: # only run update logic if time is turned on
                     self.grid.update_grid()
-            self.draw_grid()
+            self.draw()
             time.sleep(0.01)
 
     def handle_events(self, events):
@@ -200,7 +204,7 @@ class LifeTextBox():
         self.grid = Grid(array) # create grid object from array
         self.cell_size = cell_size
         self.collapse = collapse
-        self.colours = {0 : background, 1 : cell_colour}
+        self.colours = COLOURS # {0 : background, 1 : cell_colour}
         self.hovered = False
         if self.collapse: # collapse rect dimensions to match grid
             self.rect.update(self.rect[0], self.rect[1],
@@ -219,12 +223,14 @@ class LifeTextBox():
             self.grid.array = self.placeholder_grid
 
     def draw(self, surface):
-        for x in range(self.grid.array.shape[1] - 10):     # draw rectangles for each xy pair
-            for y in range(self.grid.array.shape[0] - 10): # will need to be reworked if screen is made dragable
-                draw_x = x * self.cell_size + self.rect[0]
-                draw_y = y * self.cell_size + self.rect[1]
-                rect = pygame.Rect(draw_x, draw_y, self.cell_size, self.cell_size)
-                pygame.draw.rect(surface, self.colours[self.grid.array[y + 5, x + 5]], rect)
+        """draw object on surface"""
+        mask_list = [np.equal(self.grid.array, n) for n in range(5)] # create boolean masks for each type of cell (0 through 4)
+        # the next line is very densely packed to avoid wasteful memory intensive copies of potentially million item arrays. There is an explanation for how it works in commit Alpha v1.6
+        pixel_array = sum([np.asarray(self.colours[n]) * np.transpose(np.broadcast_to(mask_list[n][:,:,None], (mask_list[n].shape[0], mask_list[n].shape[1], 3)), (1,0,2)) for n in range(5)])
+        pixel_surf = pygame.surfarray.make_surface(pixel_array[5:-5,5:-5,:]) # make surface, excluding outer 5 rows/columns
+        pixel_surf = pygame.transform.scale(pixel_surf, (pixel_surf.get_size()[0]*self.cell_size, pixel_surf.get_size()[1]*self.cell_size)) # scale by cell size
+        surface.blit(pixel_surf, self.rect[0:2]) # draw on window
+
 
 
 class LifeButton(LifeTextBox):
@@ -375,7 +381,7 @@ class TestMenu(LifeMenu): # Test menu for GridFont
 
     def init_buttons(self): # creates all buttons in the menu and returns them
         return (
-            LifeTextBox(font.inventory, (30,30,600,600), cell_size=1, background = BLACK, cell_colour = BLUE, collapse=True),
+            LifeTextBox(font.inventory, (30,30,600,600), cell_size=4, background = BLACK, cell_colour = BLUE, collapse=True),
         )
 
 class TestButton(LifeButton):
