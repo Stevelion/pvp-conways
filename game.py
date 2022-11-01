@@ -20,7 +20,7 @@ class Game:
     tickrate: delay between grid.update() calls in seconds
     cell_size: default size of cells in pixels (may be removed later if zooming is added)
     border_width: size of gap between window border and grid in pixels (may be removed later if resizing is added)"""
-    def __init__(self, surface, array, tickrate = 0.1, cell_size = 20, rect = (30, 30, 600, 600)):
+    def __init__(self, surface, array, tickrate = 0.1, cell_size = 40, rect = (30, 30, 600, 600)):
         self.surface = surface
         self.grid = ColouredGrid(array) # get Grid object
         self.tickrate = tickrate
@@ -33,10 +33,14 @@ class Game:
         self.colours = COLOURS
         self.rect_surface = pygame.Surface((self.rect[2], self.rect[3]))
         self.view_coords = [2*cell_size, 2*cell_size] # list of top left cell x,y coordinates
-        self.DIRECTIONS = {pygame.K_UP : (0, -1),
-                           pygame.K_DOWN : (0, 1),
-                           pygame.K_LEFT : (-1, 0),
-                           pygame.K_RIGHT : (1, 0)} # dict for how directions affect coords
+        self.MOVES = {pygame.K_UP : (0, -1),
+                      pygame.K_DOWN : (0, 1),
+                      pygame.K_LEFT : (-1, 0),
+                      pygame.K_RIGHT : (1, 0)} # dict for how directions affect coords
+        self.DIRECTIONS = {pygame.K_UP : False,
+                           pygame.K_DOWN : False,
+                           pygame.K_LEFT : False,
+                           pygame.K_RIGHT : False} # dict for keypress to var
 
     def main(self):
         self.start_time = time.perf_counter()
@@ -48,6 +52,9 @@ class Game:
                 self.cycles += 1
                 if self.time_on: # only run update logic if time is turned on
                     self.grid.update()
+            for direction in self.DIRECTIONS:  # check if each direction is held
+                if self.DIRECTIONS[direction]: # if it is, scroll that way
+                    self.scroll(direction)
             self.draw()
             time.sleep(0.01)
     
@@ -65,14 +72,19 @@ class Game:
                     self.handle_escape(event)
                 elif event.key == pygame.K_s:
                     self.handle_s_key(event)
+            elif event.type == pygame.KEYUP:
+                if event.key in (self.DIRECTIONS):
+                    self.handle_direction_key(event)
             elif event.type == pygame.QUIT: # if x is clicked on top right of window
                 pygame.quit()
                 quit()
     
     def handle_direction_key(self, event):
-        self.view_coords = [self.view_coords[n] + (self.DIRECTIONS[event.key][n] * 10) for n in range(2)] # shift view in direction
-        # catch view going past edge of array
-        self.view_coords = [min(max(2 * self.cell_size, self.view_coords[n]), (self.grid.array.shape[int(not n)] - 2) * self.cell_size - self.rect[n+2]) for n in range(2)]
+        if event.type == pygame.KEYDOWN:
+            self.DIRECTIONS[event.key] = True
+        else:
+            self.DIRECTIONS[event.key] = False
+
 
     def handle_space(self, event):
         """flip time_on on space press"""
@@ -101,6 +113,11 @@ class Game:
                 self.grid.array[coords[0], coords[1]] = 1 # if the clicked cell is dead, make it a player owned cell
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3 and self.grid.array[coords[0], coords[1]] == 1: # on right click
                     self.grid.array[coords[0], coords[1]] = 0 # if the clicked cell is player owned, make it dead
+
+    def scroll(self, direction, size = 10):
+        self.view_coords = [self.view_coords[n] + (self.MOVES[direction][n] * size) for n in range(2)] # shift view in direction
+        # catch view going past edge of array
+        self.view_coords = [min(max(2 * self.cell_size, self.view_coords[n]), (self.grid.array.shape[int(not n)] - 2) * self.cell_size - self.rect[n+2]) for n in range(2)]
 
     def draw(self):
         """draw visible grid on pygame window"""
