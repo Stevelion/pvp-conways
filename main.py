@@ -37,7 +37,7 @@ class LevelEditorButton(LifeButton):
 
     def function(self): # function to execute when button is clicked
         LifeButton.function(self)
-        level_editor = LevelEditor(window, np.zeros((34, 34)))
+        level_editor = LevelEditor(window, np.zeros((204, 204)))
         level_editor.main()
     
 
@@ -49,7 +49,7 @@ class SandboxButton(LifeButton):
 
     def function(self): # function to execute when button is clicked
         LifeButton.function(self)
-        game = Game(window, np.zeros((1004, 1004)), cell_size=20)
+        game = Game(window, np.zeros((204, 204)), cell_size=20)
         game.main()
 
 

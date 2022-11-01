@@ -93,9 +93,9 @@ class Game:
             self.DIRECTIONS[event.key] = False
 
     def handle_scroll(self, event):
-        """turn scroll wheel events into zooming in and out, ideally centered"""
+        """turn scroll wheel events into zooming in and out"""
         if event.type == pygame.MOUSEBUTTONDOWN:
-            center_pixel = [(self.view_coords[n]) + self.rect[2+n] // 2 for n in range(2)] # store current center
+            mouse_pixel = [self.view_coords[n] + event.pos[n] - self.rect[n] for n in range(2)] # store current center
             total_pixel = [(self.grid.array.shape[int(not n)]) * self.cell_size for n in range(2)] # store current bottom right pixel
             if event.button == 4:
                 self.cell_size += 5
@@ -105,9 +105,9 @@ class Game:
                 self.cell_size = max(5, self.cell_size, max(ceil(self.rect[2] / (self.grid.array.shape[1] - 4)), ceil(self.rect[3] / (self.grid.array.shape[0] - 4))))
             new_total_pixel = [(self.grid.array.shape[int(not n)]) * self.cell_size for n in range(2)] # get new bottom right pixel
             # multiply old center/total ratio by new total to get new center, then subtract half of rect size to find top left
-            new_center_pixel = [int(center_pixel[n] / total_pixel[n] * new_total_pixel[n]) - self.rect[2+n] // 2 for n in range(2)]
+            new_mouse_pixel = [int(mouse_pixel[n] / total_pixel[n] * new_total_pixel[n]) - event.pos[n] + self.rect[n] for n in range(2)]
             # catch overhang when zooming out next to border
-            self.view_coords = [max(2 * self.cell_size, min(new_center_pixel[n], new_total_pixel[n] - self.rect[2+n] - 2 * self.cell_size)) for n in range(2)]
+            self.view_coords = [max(2 * self.cell_size, min(new_mouse_pixel[n], new_total_pixel[n] - self.rect[2+n] - 2 * self.cell_size)) for n in range(2)]
 
     def handle_space(self, event):
         """flip time_on on space press"""
