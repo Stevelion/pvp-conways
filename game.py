@@ -17,14 +17,12 @@ class Game:
     """Main game class to handle events and general gameplay.
     surface: surface to draw onto
     array: array of cells to initialize with
-    build_area: top left cell coordinates and width/height as rect (eventually change this to 4 length tuple)
     tickrate: delay between grid.update() calls in seconds
     cell_size: default size of cells in pixels (may be removed later if zooming is added)
     border_width: size of gap between window border and grid in pixels (may be removed later if resizing is added)"""
-    def __init__(self, surface, array, build_area, tickrate = 0.1, cell_size = 20, rect = (30, 30, 600, 600)):
+    def __init__(self, surface, array, tickrate = 0.1, cell_size = 20, rect = (30, 30, 600, 600)):
         self.surface = surface
         self.grid = ColouredGrid(array) # get Grid object
-        self.build_area = build_area
         self.tickrate = tickrate
         self.cell_size = cell_size
         self.rect = pygame.Rect(rect)
@@ -122,26 +120,14 @@ class Game:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 class LevelEditor(Game):
-    """Please dear god for your sanity and mine don't try to figure this mess out
-    it spent 30 minutes trying to refactor it, because it's copy and pasted code from like 3 different stages of developement"""
-    def __init__(self, surface, array, build_area):
-        Game.__init__(self, surface, array, build_area)
+    """Child class for the level editor
+    works very similarly to Game except for some functionality to help with level building and a save function"""
+    def __init__(self, surface, array):
+        Game.__init__(self, surface, array)
 
     def main(self):
         self.surface.fill(BACKGROUND_COLOUR)
-        pygame.draw.rect(self.surface, BUILD_COLOUR, self.build_area)
         self.start_time = time.perf_counter()
         while self.ingame:
             # get events

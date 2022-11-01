@@ -3,7 +3,6 @@ import pygame
 from gridfont import font
 from lifegui import LifeTextBox, LifeButton, LifeMenu
 from game import Game, LevelEditor
-# from newgame import Game
 # import subprocess # potentially for file management later
 
 cell_size = 20 # pixels
@@ -38,7 +37,7 @@ class LevelEditorButton(LifeButton):
 
     def function(self): # function to execute when button is clicked
         LifeButton.function(self)
-        level_editor = LevelEditor(window, np.zeros((34, 34)), pygame.Rect(border_width + cell_size*15, border_width, cell_size*15 - 1, cell_size*15 - 1))
+        level_editor = LevelEditor(window, np.zeros((34, 34)))
         level_editor.main()
     
 
@@ -50,7 +49,7 @@ class SandboxButton(LifeButton):
 
     def function(self): # function to execute when button is clicked
         LifeButton.function(self)
-        game = Game(window, np.zeros((34, 34)), pygame.Rect(border_width, border_width, cell_size*30 - 1, cell_size*30 - 1))
+        game = Game(window, np.zeros((34, 34)))
         game.main()
 
 
@@ -63,7 +62,7 @@ class LevelButton(LifeButton): # child class for buttons in level select submenu
         LifeButton.function(self)
         if self.filename == None: return
         # run game with array loaded from csv file
-        game = Game(window , np.genfromtxt('levels/' + self.filename, delimiter=','), pygame.Rect(border_width + cell_size*15, border_width, cell_size*15 - 1, cell_size*15 - 1))
+        game = Game(window , np.genfromtxt('levels/' + self.filename, delimiter=','))
         game.main()
 
 
