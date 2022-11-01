@@ -33,7 +33,7 @@ class LifeTextBox():
                             (self.grid.array.shape[0] - 10) * self.cell_size)
 
     def update(self):
-        self.grid.update_grid()
+        self.grid.update()
     
     def hover(self, event): # event handler for MOUSEMOTION events
         if not self.hovered and self.rect.collidepoint(event.pos): # if it wasn't hovered and now is

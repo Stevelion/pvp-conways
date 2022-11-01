@@ -7,7 +7,7 @@ class Grid:
     def __init__(self, array):
         self.array = array
 
-    def update_grid(self):
+    def update(self):
         self.bool_array = self.array.astype(bool)
         self.living = self.bool_array.astype(int) # convert to binary
         self.neighbors = self.get_neighbors(self.living) # get neighbors

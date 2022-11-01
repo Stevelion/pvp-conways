@@ -1,10 +1,9 @@
 import numpy as np
 import pygame
-import time
 from gridfont import font
 from lifegui import LifeTextBox, LifeButton, LifeMenu
-from grid import Grid, ColouredGrid
 from game import Game, LevelEditor
+# from newgame import Game
 # import subprocess # potentially for file management later
 
 cell_size = 20 # pixels
