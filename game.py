@@ -20,7 +20,7 @@ class Game:
     tickrate: delay between grid.update() calls in seconds
     cell_size: default size of cells in pixels (may be removed later if zooming is added)
     border_width: size of gap between window border and grid in pixels (may be removed later if resizing is added)"""
-    def __init__(self, surface, array, tickrate = 0.1, cell_size = 40, rect = (30, 30, 600, 600)):
+    def __init__(self, surface, array, tickrate = 0.1, cell_size = 20, rect = (30, 30, 600, 600)):
         self.surface = surface
         self.grid = ColouredGrid(array) # get Grid object
         self.tickrate = tickrate
@@ -32,7 +32,7 @@ class Game:
         self.cycles = 1
         self.colours = COLOURS
         self.rect_surface = pygame.Surface((self.rect[2], self.rect[3]))
-        self.view_coords = [2*cell_size, 2*cell_size] # list of top left cell x,y coordinates
+        self.view_coords = [12*cell_size, 12*cell_size] # list of top left cell x,y coordinates
         self.MOVES = {pygame.K_UP : (0, -1),
                       pygame.K_DOWN : (0, 1),
                       pygame.K_LEFT : (-1, 0),
@@ -45,6 +45,7 @@ class Game:
     def main(self):
         self.start_time = time.perf_counter()
         self.surface.fill(BACKGROUND_COLOUR)
+        start_time = time.perf_counter()
         while self.ingame:
             # get events
             self.handle_events(pygame.event.get())
@@ -52,17 +53,22 @@ class Game:
                 self.cycles += 1
                 if self.time_on: # only run update logic if time is turned on
                     self.grid.update()
+                    print(time.perf_counter() - start_time)
+                    start_time = time.perf_counter()
             for direction in self.DIRECTIONS:  # check if each direction is held
                 if self.DIRECTIONS[direction]: # if it is, scroll that way
-                    self.scroll(direction)
+                    self.move(direction)
             self.draw()
             time.sleep(0.01)
     
     def handle_events(self, events):
         """top level function to delegate events"""
         for event in events:
-            if event.type in (pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN) and event.button in (1, 3): # left/right click
-                self.handle_click(event)
+            if event.type in (pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN):
+                if event.button in (1, 3): # left/right click
+                    self.handle_click(event)
+                elif event.button in (4, 5): # scroll
+                    self.handle_scroll(event)
             elif event.type == pygame.KEYDOWN: # various keys
                 if event.key in (self.DIRECTIONS):
                     self.handle_direction_key(event)
@@ -80,11 +86,15 @@ class Game:
                 quit()
     
     def handle_direction_key(self, event):
+        """toggle whether a key is pressed for move check"""
         if event.type == pygame.KEYDOWN:
             self.DIRECTIONS[event.key] = True
         else:
             self.DIRECTIONS[event.key] = False
 
+    def handle_scroll(self, event):
+        """turn scroll wheel events into zooming in and out, ideally centered"""
+        pass
 
     def handle_space(self, event):
         """flip time_on on space press"""
@@ -114,7 +124,7 @@ class Game:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3 and self.grid.array[coords[0], coords[1]] == 1: # on right click
                     self.grid.array[coords[0], coords[1]] = 0 # if the clicked cell is player owned, make it dead
 
-    def scroll(self, direction, size = 10):
+    def move(self, direction, size = 10):
         self.view_coords = [self.view_coords[n] + (self.MOVES[direction][n] * size) for n in range(2)] # shift view in direction
         # catch view going past edge of array
         self.view_coords = [min(max(2 * self.cell_size, self.view_coords[n]), (self.grid.array.shape[int(not n)] - 2) * self.cell_size - self.rect[n+2]) for n in range(2)]
@@ -142,20 +152,6 @@ class LevelEditor(Game):
     works very similarly to Game except for some functionality to help with level building and a save function"""
     def __init__(self, surface, array):
         Game.__init__(self, surface, array)
-
-    def main(self):
-        self.surface.fill(BACKGROUND_COLOUR)
-        self.start_time = time.perf_counter()
-        while self.ingame:
-            # get events
-            self.handle_events(pygame.event.get())
-
-            if time.perf_counter() - self.start_time - self.cycles * self.tickrate > 0: # true every 'tickrate' seconds
-                self.cycles += 1
-                if self.time_on: # only run update logic if time is turned on
-                    self.grid.update()
-            self.draw()
-            time.sleep(0.01)
 
     def handle_space(self, event):
         if self.time_on == False:
