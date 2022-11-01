@@ -2,6 +2,7 @@ import numpy as np
 import pygame
 import time
 from grid import ColouredGrid
+from math import ceil
 
 
 # owner: 0 = dead, 1 = player, 2 = enemy, 3 = shrapnel, 4 = what to defend/attack
@@ -32,7 +33,8 @@ class Game:
         self.cycles = 1
         self.colours = COLOURS
         self.rect_surface = pygame.Surface((self.rect[2], self.rect[3]))
-        self.view_coords = [12*cell_size, 12*cell_size] # list of top left cell x,y coordinates
+        self.view_coords = [(self.grid.array.shape[1]*cell_size - self.rect[3]) // 2,
+                            (self.grid.array.shape[0]*cell_size - self.rect[2]) // 2] # list of top left cell x,y coordinates
         self.MOVES = {pygame.K_UP : (0, -1),
                       pygame.K_DOWN : (0, 1),
                       pygame.K_LEFT : (-1, 0),
@@ -45,7 +47,6 @@ class Game:
     def main(self):
         self.start_time = time.perf_counter()
         self.surface.fill(BACKGROUND_COLOUR)
-        start_time = time.perf_counter()
         while self.ingame:
             # get events
             self.handle_events(pygame.event.get())
@@ -53,12 +54,11 @@ class Game:
                 self.cycles += 1
                 if self.time_on: # only run update logic if time is turned on
                     self.grid.update()
-                    print(time.perf_counter() - start_time)
-                    start_time = time.perf_counter()
             for direction in self.DIRECTIONS:  # check if each direction is held
                 if self.DIRECTIONS[direction]: # if it is, scroll that way
                     self.move(direction)
             self.draw()
+            # print(self.view_coords, self.cell_size)
             time.sleep(0.01)
     
     def handle_events(self, events):
@@ -94,7 +94,20 @@ class Game:
 
     def handle_scroll(self, event):
         """turn scroll wheel events into zooming in and out, ideally centered"""
-        pass
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            center_pixel = [(self.view_coords[n]) + self.rect[2+n] // 2 for n in range(2)] # store current center
+            total_pixel = [(self.grid.array.shape[int(not n)]) * self.cell_size for n in range(2)] # store current bottom right pixel
+            if event.button == 4:
+                self.cell_size += 5
+            else:
+                self.cell_size -= 5
+                # catch zooming too far out (far enough that the grid can't cover the full rect)
+                self.cell_size = max(5, self.cell_size, max(ceil(self.rect[2] / (self.grid.array.shape[1] - 4)), ceil(self.rect[3] / (self.grid.array.shape[0] - 4))))
+            new_total_pixel = [(self.grid.array.shape[int(not n)]) * self.cell_size for n in range(2)] # get new bottom right pixel
+            # multiply old center/total ratio by new total to get new center, then subtract half of rect size to find top left
+            new_center_pixel = [int(center_pixel[n] / total_pixel[n] * new_total_pixel[n]) - self.rect[2+n] // 2 for n in range(2)]
+            # catch overhang when zooming out next to border
+            self.view_coords = [max(2 * self.cell_size, min(new_center_pixel[n], new_total_pixel[n] - self.rect[2+n] - 2 * self.cell_size)) for n in range(2)]
 
     def handle_space(self, event):
         """flip time_on on space press"""

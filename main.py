@@ -49,7 +49,7 @@ class SandboxButton(LifeButton):
 
     def function(self): # function to execute when button is clicked
         LifeButton.function(self)
-        game = Game(window, np.zeros((1004, 1004)), cell_size=8)
+        game = Game(window, np.zeros((1004, 1004)), cell_size=20)
         game.main()
 
 
