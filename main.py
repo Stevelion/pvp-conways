@@ -5,14 +5,9 @@ from lifegui import LifeTextBox, LifeButton, LifeMenu
 from game import Game, LevelEditor
 # import subprocess # potentially for file management later
 
-cell_size = 20 # pixels
-border_width = 30 # pixels
 # owner: 0 = dead, 1 = player, 2 = enemy, 3 = shrapnel, 4 = what to defend/attack
 COLOURS = {0 : (0, 0, 0), 1 : (0, 0, 255), 2 : (255, 0, 0), 3 : (225, 115, 20), 4 : (140, 0, 200)}
 # some temporary colour definitions for easier GUI dev
-BUILD_COLOUR = (30, 240, 80)
-DEFAULT_BUTTON_COLOUR = (180,180,180)
-BACKGROUND_COLOUR = (240,240,240)
 BLACK, RED, GREEN, BLUE = (0,0,0), (255, 0, 0), (0,255,0), (0,0,255)
 
 
@@ -62,7 +57,7 @@ class LevelButton(LifeButton): # child class for buttons in level select submenu
         LifeButton.function(self)
         if self.filename == None: return
         # run game with array loaded from csv file
-        game = Game(window , np.genfromtxt('levels/' + self.filename, delimiter=','))
+        game = Game(window , np.genfromtxt('levels/' + self.filename, delimiter=','), build_area = (((2,17), (16,32)),))
         game.main()
 
 
@@ -122,7 +117,7 @@ class TestButton(LifeButton):
 WINDOW_WIDTH = 660
 WINDOW_HEIGHT = 660
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-window.fill(BACKGROUND_COLOUR)
+window.fill(BLACK)
 
 level_select = LevelSelect(window)
 main_menu = MainMenu(window)

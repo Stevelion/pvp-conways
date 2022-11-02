@@ -42,6 +42,7 @@ class ColouredGrid(Grid):
     """child grid function to handle 5 cell types instead of only 2"""
     def __init__(self, array):
         Grid.__init__(self, array)
+        self.bases = np.equal(self.array, 4) # create a mask of all base cells
     
     def update_cell(self):
         """partially copy and pasted code from old Grid class, however it now only runs on cells that become alive, not all cells that could
@@ -57,3 +58,4 @@ class ColouredGrid(Grid):
             else: # if not all neighbors the same, return 3 (debris)
                 self.new_array[self.new_living_indices[0][n], self.new_living_indices[1][n]] = 3
         self.array = self.new_array
+        self.damaged_base = np.logical_xor(self.bases, np.equal(self.array, 4)) # True if any base cell changed from init mask to now
