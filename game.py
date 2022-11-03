@@ -172,18 +172,18 @@ class Game:
     def draw(self):
         """draw visible grid on pygame window"""
         # add in build area cosmetically
-        draw_grid = sum((self.grid.array, (np.logical_and(self.build_area, np.logical_not(self.grid.array.astype(bool))) * 5)))
+        self.draw_grid = sum((self.grid.array, (np.logical_and(self.build_area, np.logical_not(self.grid.array.astype(bool))) * 5)))
         # slice array to only operate on visible part of grid
-        self.viewable_grid = draw_grid[self.view_coords[1] // self.cell_size : (self.view_coords[1] + self.rect[3]) // self.cell_size + 1,
+        self.viewable_grid = self.draw_grid[self.view_coords[1] // self.cell_size : (self.view_coords[1] + self.rect[3]) // self.cell_size + 1,
                                        self.view_coords[0] // self.cell_size : (self.view_coords[0] + self.rect[2]) // self.cell_size + 1]
         mask_list = [np.equal(self.viewable_grid, n) for n in range(6)] # create boolean masks for each type of cell (0 through 4)
         # the next line is very densely packed to avoid wasteful memory intensive copies of potentially million item arrays. There is an explanation for how it works in commit Alpha v1.6
-        pixel_array = sum([np.asarray(self.colours[n]) * np.transpose(np.broadcast_to(mask_list[n][:,:,None], (mask_list[n].shape[0], mask_list[n].shape[1], 3)), (1,0,2)) for n in range(6)])
-        pixel_surf = pygame.surfarray.make_surface(pixel_array) # make surface
-        pixel_surf = pygame.transform.scale(pixel_surf, (pixel_surf.get_size()[0]*self.cell_size, pixel_surf.get_size()[1]*self.cell_size)) # scale by cell size
-        pixel_surf.scroll(-(self.view_coords[0] % self.cell_size), -(self.view_coords[1] % self.cell_size)) # scroll surface by the offset (I think it just shifts all pixels in a direction)
+        self.pixel_array = sum([np.asarray(self.colours[n]) * np.transpose(np.broadcast_to(mask_list[n][:,:,None], (mask_list[n].shape[0], mask_list[n].shape[1], 3)), (1,0,2)) for n in range(6)])
+        self.pixel_surf = pygame.surfarray.make_surface(self.pixel_array) # make surface
+        self.pixel_surf = pygame.transform.scale(self.pixel_surf, (self.pixel_surf.get_size()[0]*self.cell_size, self.pixel_surf.get_size()[1]*self.cell_size)) # scale by cell size
+        self.pixel_surf.scroll(-(self.view_coords[0] % self.cell_size), -(self.view_coords[1] % self.cell_size)) # scroll surface by the offset (I think it just shifts all pixels in a direction)
         self.surface.blit(self.rect_surface, self.rect) # draw intermediate surface to mask out hanging pixels at edge
-        self.rect_surface.blit(pixel_surf, (0,0)) # draw
+        self.rect_surface.blit(self.pixel_surf, (0,0)) # draw
         pygame.display.update()
 
 

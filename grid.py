@@ -45,17 +45,22 @@ class ColouredGrid(Grid):
         self.bases = np.equal(self.array, 4) # create a mask of all base cells
     
     def update_cell(self):
-        """partially copy and pasted code from old Grid class, however it now only runs on cells that become alive, not all cells that could
-        change state"""
-        self.new_living_indices = np.nonzero(self.become_living) # get indices of cells becoming alive
-        self.new_array = self.array.copy() * self.new_living.astype(int) # remove dying cells from new array
-        for n in range(len(self.new_living_indices[0])): # for each cell, create a 3x3 kernel around it, then use it to determine colour
-            kernel = self.array[self.new_living_indices[0][n]-1:self.new_living_indices[0][n]+2, self.new_living_indices[1][n]-1:self.new_living_indices[1][n]+2]
-            nonzero = np.nonzero(kernel)
-            # # if all neighbors the same, return it
-            if len(set([kernel[nonzero[0][n], nonzero[1][n]] for n in range(len(nonzero[0]))])) == 1:
-                self.new_array[self.new_living_indices[0][n], self.new_living_indices[1][n]] = np.max(kernel)
-            else: # if not all neighbors the same, return 3 (debris)
-                self.new_array[self.new_living_indices[0][n], self.new_living_indices[1][n]] = 3
-        self.array = self.new_array
+        """new colouring logic handled by numpy instead of python"""
+        self.mask_list = [np.equal(self.array, n) for n in range(5)] # create masks of each type from old array
+        self.mask_neighbors = {} # initialize dict of masks of whether a cell has a neighbor of type n
+        for n in range(1, 5): # fill aforementioned dict
+            self.mask_top = np.roll(self.mask_list[n], 1, 0)
+            self.mask_bottom = np.roll(self.mask_list[n], -1, 0)
+            self.mask_neighbors[n] = (sum((self.mask_top, self.mask_bottom, np.roll(self.mask_list[n], 1, 1), np.roll(self.mask_list[n], -1, 1),
+                                     np.roll(self.mask_top, 1, 1), np.roll(self.mask_top, -1, 1), np.roll(self.mask_bottom, 1, 1), np.roll(self.mask_bottom, -1, 1)))).astype(bool)
+        # create type masks
+        self.single_neighbor_mask = np.equal(sum(self.mask_neighbors.values()), 1) # has exactly 1 type of living neighbor
+        self.mult_neighbor_mask = np.greater(sum(self.mask_neighbors.values()), 1)
+        self.type_masks = {n : np.logical_or(self.mask_list[n], np.logical_and(self.mask_neighbors[n], self.single_neighbor_mask)) for n in (1, 2, 4)}
+        self.type_masks[3] = np.logical_or(self.mask_list[3], np.logical_and(np.logical_not(self.bool_array), np.logical_or(self.mask_neighbors[3], self.mult_neighbor_mask)))
+
+        self.colour_mask = sum([self.type_masks[n] * n for n in range(1,5)])
+
+        self.array = self.colour_mask * self.new_living
         self.damaged_base = np.logical_xor(self.bases, np.equal(self.array, 4)) # True if any base cell changed from init mask to now
+
