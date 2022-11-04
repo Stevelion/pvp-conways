@@ -51,16 +51,21 @@ class ColouredGrid(Grid):
         for n in range(1, 5): # fill aforementioned dict
             self.mask_top = np.roll(self.mask_list[n], 1, 0)
             self.mask_bottom = np.roll(self.mask_list[n], -1, 0)
+            # create dicts of neighbor types
             self.mask_neighbors[n] = (sum((self.mask_top, self.mask_bottom, np.roll(self.mask_list[n], 1, 1), np.roll(self.mask_list[n], -1, 1),
                                      np.roll(self.mask_top, 1, 1), np.roll(self.mask_top, -1, 1), np.roll(self.mask_bottom, 1, 1), np.roll(self.mask_bottom, -1, 1)))).astype(bool)
         # create type masks
         self.single_neighbor_mask = np.equal(sum(self.mask_neighbors.values()), 1) # has exactly 1 type of living neighbor
-        self.mult_neighbor_mask = np.greater(sum(self.mask_neighbors.values()), 1)
+        self.mult_neighbor_mask = np.greater(sum(self.mask_neighbors.values()), 1) # has more than 1 type of neighbor
+        # create masks of whether a cell should be coloured that type
         self.type_masks = {n : np.logical_or(self.mask_list[n], np.logical_and(self.mask_neighbors[n], self.single_neighbor_mask)) for n in (1, 2, 4)}
         self.type_masks[3] = np.logical_or(self.mask_list[3], np.logical_and(np.logical_not(self.bool_array), np.logical_or(self.mask_neighbors[3], self.mult_neighbor_mask)))
-
-        self.colour_mask = sum([self.type_masks[n] * n for n in range(1,5)])
-
-        self.array = self.colour_mask * self.new_living
+        # to remove overlap if orange cell alive but has only 1 neighbor type
+        self.not_3 = np.logical_not(self.type_masks[3])
+        for n in (1,2,4):
+            self.type_masks[n] = self.type_masks[n] * self.not_3
+        # combine type masks into a colour field to be masked by Grid.new_living
+        self.colour_field = sum([self.type_masks[n] * n for n in range(1,5)])
+        self.array = self.colour_field * self.new_living
         self.damaged_base = np.logical_xor(self.bases, np.equal(self.array, 4)) # True if any base cell changed from init mask to now
 
