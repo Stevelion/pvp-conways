@@ -1,5 +1,6 @@
 import numpy as np
 import pygame
+import json
 from gridfont import font
 from lifegui import LifeTextBox, LifeButton, LifeMenu
 from game import Game, LevelEditor
@@ -32,7 +33,9 @@ class LevelEditorButton(LifeButton):
 
     def function(self): # function to execute when button is clicked
         LifeButton.function(self)
-        level_editor = LevelEditor(window, np.zeros((204, 204)))
+        array = np.zeros((13,40))
+        build_area = (((0,0), (0,0)),)
+        level_editor = LevelEditor(window, array, build_area=build_area, cell_size=50)
         level_editor.main()
     
 
@@ -44,7 +47,7 @@ class SandboxButton(LifeButton):
 
     def function(self): # function to execute when button is clicked
         LifeButton.function(self)
-        game = Game(window, np.zeros((204, 204)), cell_size=20)
+        game = Game(window, np.zeros((124, 124)), cell_size=20)
         game.main()
 
 
@@ -57,7 +60,9 @@ class LevelButton(LifeButton): # child class for buttons in level select submenu
         LifeButton.function(self)
         if self.filename == None: return
         # run game with array loaded from csv file
-        game = Game(window , np.genfromtxt('levels/' + self.filename, delimiter=','), build_area = (((2,17), (16,32)),))
+        with open('levels/' + self.filename + '.json', 'r') as f:
+            self.setup = json.load(f)
+        game = Game(window , np.genfromtxt('levels/' + self.setup['array'], delimiter=','), build_area = self.setup['build_area'])
         game.main()
 
 
@@ -84,10 +89,10 @@ class LevelSelect(LifeMenu):
 
     def init_buttons(self): # creates all buttons in the menu and returns them
         return (
-            LevelButton('Demo', (60,180,250,75), 'demo.csv'),
-            LevelButton('Level 1', (60,295,250,75), 'level_1.csv'),
-            LevelButton('Level 2', (60,400,250,75), 'level_2.csv'),
-            LevelButton('Level 3', (350,180,250,75), 'level_3.csv'),
+            LevelButton('Demo', (60,180,250,75), 'demo'),
+            LevelButton('Level 1', (60,295,250,75), 'level_1'),
+            LevelButton('Level 2', (60,400,250,75), 'level_2'),
+            LevelButton('Level 3', (350,180,250,75), 'level_3'),
             LevelButton('Unused', (350,295,250,75), None),
             LevelButton('Unused', (350,400,250,75), None)
         )
@@ -114,7 +119,7 @@ class TestButton(LifeButton):
         test_menu.main()
 
 
-WINDOW_WIDTH = 660
+WINDOW_WIDTH = 960
 WINDOW_HEIGHT = 660
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 window.fill(BLACK)
