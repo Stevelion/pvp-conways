@@ -173,8 +173,11 @@ class Game:
     def handle_space(self):
         """flip time_on on space press"""
         if not self.game_over:
+            if self.time_on == False:
+                self.placeholder_grid = self.grid.array.copy()
+            else:
+                self.grid.array = self.placeholder_grid
             self.time_on = not self.time_on
-        self.last_grid = np.zeros(self.grid.array.shape) # clear undo array when time turns on or off
 
 
     def handle_escape(self):
