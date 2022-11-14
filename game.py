@@ -54,8 +54,7 @@ class Game:
                            pygame.K_RIGHT : False} # dict for whether a direction is held
         self.buttons = [PrefabButton('Glider', (660, 200, 144, 100), np.genfromtxt('prefab/glider.csv', delimiter=','), parent=self, cell_size=12),
                         PrefabButton('Glider Gun', (660, 300, 144, 100), np.genfromtxt('prefab/gun.csv', delimiter=','), parent=self, cell_size=4)]
-        self.selected_pattern = np.zeros((1,1))
-        self.prefab_todraw_array = np.zeros(self.grid.array.shape, bool)
+        self.clear_prefab() # initialize prefab related arrays
         self.last_grid = np.zeros(self.grid.array.shape) # initialize undo array to allow for checking in undo method
 
 
@@ -69,6 +68,7 @@ class Game:
                 self.cycles += 1
                 if self.time_on: # only run update logic if time is turned on
                     self.grid.update()
+                    self.draw_prefab()
                     self.check_bases()
                 for button in self.buttons:
                     if button.hovered: # update all buttons that are ticked as hovered, should only ever be 1
@@ -135,6 +135,12 @@ class Game:
         elif event.key == pygame.K_t: # key to flip horizontally
             self.selected_pattern = np.fliplr(self.selected_pattern)
         self.draw_prefab() # update draw
+
+
+    def clear_prefab(self):
+        """clears currently selected prefab"""
+        self.selected_pattern = np.zeros((1,1)) # clear selected pattern
+        self.prefab_todraw_array = np.zeros(self.grid.array.shape, bool) # clear draw array
 
 
     def handle_direction_key(self, event):
@@ -209,11 +215,9 @@ class Game:
         """what do do if player clicks while a prefab is selected"""
         if event.button == 1 and not self.time_on and not self.game_over: # if left click:
             self.grid.array = sum((self.grid.array, self.prefab_todraw_array)) # put pattern into grid
-            self.selected_pattern = np.zeros((1,1)) # clear selected pattern
-            self.prefab_todraw_array = np.zeros(self.grid.array.shape, bool) # clear draw array
+            self.clear_prefab()
         elif event.button == 3: # if right click
-            self.selected_pattern = np.zeros((1,1)) # clear selected pattern
-            self.prefab_todraw_array = np.zeros(self.grid.array.shape, bool) # clear draw array
+            self.clear_prefab()
 
 
     def handle_grid_click(self, event):
