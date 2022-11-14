@@ -93,7 +93,7 @@ class LevelSelect(LifeMenu):
             LevelButton('Level 1', (60,295,250,75), 'level_1'),
             LevelButton('Level 2', (60,400,250,75), 'level_2'),
             LevelButton('Level 3', (350,180,250,75), 'level_3'),
-            LevelButton('Unused', (350,295,250,75), None),
+            LevelButton('Test', (350,295,250,75), 'test_level'),
             LevelButton('Unused', (350,400,250,75), None)
         )
 
