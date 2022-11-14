@@ -353,3 +353,20 @@ class LevelEditor(Game):
     def check_bases(self):
         """don't check bases in the editor"""
         pass
+
+    def draw_prefab(self):
+        """check whether do draw prefab and create array to draw later
+        level editor version does not check for build area or collisions"""
+        # translate to global array coords (also needs to be y,x for numpy) uses mouse.get_pos() instead of an event to handle scrolling and zoom
+        coords = [(pygame.mouse.get_pos()[n] - self.rect[n] + self.view_coords[n]) // self.cell_size for n in range(2)][::-1]
+        if coords[0] - self.selected_pattern.shape[0] < 1 or coords[1] + self.selected_pattern.shape[1] > self.grid.array.shape[1] - 2:
+            self.prefab_todraw_array = np.zeros(self.grid.array.shape, bool) # if bounding box goes outside of grid
+            return
+        # create a boolean mask out of the pattern as an intermediate step to check for cell collisions
+        self.pattern_mask = self.selected_pattern.astype(bool)
+        self.pattern_mask = np.append(np.zeros((coords[0] - self.pattern_mask.shape[0] + 1, self.pattern_mask.shape[1]), bool), self.pattern_mask, 0) # expand top
+        self.pattern_mask = np.append(np.zeros((self.pattern_mask.shape[0], coords[1]), bool), self.pattern_mask, 1) # expand left
+        self.pattern_mask = np.append(self.pattern_mask, np.zeros((self.grid.array.shape[0] - self.pattern_mask.shape[0], self.pattern_mask.shape[1]), bool), 0) # expand bottom
+        self.pattern_mask = np.append(self.pattern_mask, np.zeros((self.pattern_mask.shape[0], self.grid.array.shape[1] - self.pattern_mask.shape[1]), bool), 1) # expand right
+        self.prefab_todraw_array = self.pattern_mask.copy() # finally make the todraw array the pattern
+        return 
