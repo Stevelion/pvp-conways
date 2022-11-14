@@ -1,7 +1,7 @@
-PvP Conway's Alpha
-Conway's Game of Life as a strategy game
+The Puzzle of Life Beta
+Conway's Game of Life as a strategy puzzle game
 
-The goal of PvP Conway's is to build patterns in Conway's Game of Life to destroy your opponent's base (kill any of their purple cells),
+The goal of TPoL is to build patterns in Conway's Game of Life to destroy your opponent's base (kill any of their purple cells),
 while occasionally defending your own.
 
 Cells are different colours depending on their owner:
@@ -12,9 +12,12 @@ Cells are different colours depending on their owner:
   Purple - Base
 
 Controls:
-  Left click to place a cell, right click to remove one (only works inside your build zone in singleplayer.)
+  Left click to place a cell, right click to remove one (only works inside your build zone in singleplayer which is shaded lighter grey)
   Space turns time on or off. You can't manually edit the board while time is running - turn it off again to build more.
   Escape returns you to the previous menu.
+  Clicking a pattern on the right selects it, left click anywhere on the board where it fits to place it down, or right click to clear it.
+  Pressing 'r' rotates the pattern 90 degrees clockwise; pressing 't' flips it horizontally; pressing 'f' flips is vertically.
+  Ctrl + 'z' undoes your most recent action.
 
 Singleplayer contains a selection of prebuilt levels to play.
 Level Editor allows you to build your own levels and save them to play later.
