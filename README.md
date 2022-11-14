@@ -16,7 +16,7 @@ Controls:
   Space turns time on or off. You can't manually edit the board while time is running - turn it off again to build more.
   Escape returns you to the previous menu.
   Clicking a pattern on the right selects it, left click anywhere on the board where it fits to place it down, or right click to clear it.
-  Pressing 'r' rotates the pattern 90 degrees clockwise; pressing 't' flips it horizontally; pressing 'f' flips is vertically.
+  Pressing 'r' rotates the pattern 90 degrees clockwise; pressing 't' flips it horizontally; pressing 'f' flips it vertically.
   Ctrl + 'z' undoes your most recent action.
 
 Singleplayer contains a selection of prebuilt levels to play.
