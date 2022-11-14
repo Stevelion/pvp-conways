@@ -27,7 +27,7 @@ class Game:
         self.grid = ColouredGrid(array) # get Grid object
         self.tickrate = tickrate # how often in seconds to call grid.update()
         self.cell_size = cell_size # starting size of cells in pixels
-        self.rect = pygame.Rect(rect) # rect the the game is inside of
+        self.rect = pygame.Rect(rect) # rect the grid is inside of
         self.build_rects = build_area
         if build_area:
             self.build_area = np.zeros(self.grid.array.shape, dtype=bool)
@@ -86,7 +86,7 @@ class Game:
             if event.type == pygame.MOUSEMOTION: # find if mouse motion involved hovering or unhovering a button
                 for button in self.buttons:
                     button.hover(event) # pass to each button, they turn flip a var that says whether to update at update step
-                if np.any(self.selected_pattern) and self.rect.collidepoint(event.pos): # if a pattern is selected and mouse is over grid
+                if np.any(self.selected_pattern): # if a pattern is selected
                     self.draw_prefab()
 
             if event.type in (pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN):
@@ -265,6 +265,9 @@ class Game:
     def draw_prefab(self):
         """check whether do draw prefab and create array to draw later"""
         # translate to global array coords (also needs to be y,x for numpy) uses mouse.get_pos() instead of an event to handle scrolling and zoom
+        if not self.rect.collidepoint(pygame.mouse.get_pos()):
+            self.prefab_todraw_array = np.zeros(self.grid.array.shape, bool) # don't draw if mouse is outside grid
+            return
         coords = [(pygame.mouse.get_pos()[n] - self.rect[n] + self.view_coords[n]) // self.cell_size for n in range(2)][::-1]
         if coords[0] - self.selected_pattern.shape[0] < 1 or coords[1] + self.selected_pattern.shape[1] > self.grid.array.shape[1] - 2:
             self.prefab_todraw_array = np.zeros(self.grid.array.shape, bool) # if bounding box goes outside of grid
@@ -358,6 +361,9 @@ class LevelEditor(Game):
         """check whether do draw prefab and create array to draw later
         level editor version does not check for build area or collisions"""
         # translate to global array coords (also needs to be y,x for numpy) uses mouse.get_pos() instead of an event to handle scrolling and zoom
+        if not self.rect.collidepoint(pygame.mouse.get_pos()):
+            self.prefab_todraw_array = np.zeros(self.grid.array.shape, bool) # don't draw if mouse is outside grid
+            return
         coords = [(pygame.mouse.get_pos()[n] - self.rect[n] + self.view_coords[n]) // self.cell_size for n in range(2)][::-1]
         if coords[0] - self.selected_pattern.shape[0] < 1 or coords[1] + self.selected_pattern.shape[1] > self.grid.array.shape[1] - 2:
             self.prefab_todraw_array = np.zeros(self.grid.array.shape, bool) # if bounding box goes outside of grid
