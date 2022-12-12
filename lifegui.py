@@ -25,10 +25,9 @@ class LifeTextBox():
         array = font.expand_grid(array, (array.shape[1] + 14, array.shape[0] + 14)) # expand array with 0s
         self.grid = Grid(array) # create grid object from array
         self.cell_size = cell_size
-        self.collapse = collapse
         self.colours = {0 : background, 1 : cell_colour}
         self.hovered = False
-        if self.collapse: # collapse rect dimensions to match grid
+        if collapse: # collapse rect dimensions to match grid
             self.rect.update(self.rect[0], self.rect[1],
                             (self.grid.array.shape[1] - 10) * self.cell_size,
                             (self.grid.array.shape[0] - 10) * self.cell_size)
@@ -119,6 +118,7 @@ class LifeMenu:
 
 
 class PrefabButton(LifeButton):
+    """Ingame button for prefab selection"""
     def __init__(self, name, rect, array, parent, cell_size):
         self.name = name
         self.rect = pygame.Rect(rect)
@@ -126,7 +126,7 @@ class PrefabButton(LifeButton):
         self.parent = parent
         self.cell_size = cell_size
         self.grid = Grid(self.expand_array(self.pattern, (self.rect[2], self.rect[3]), self.cell_size)) # create grid object from array
-        self.colours = {0 : BLACK, 1 : BLUE}
+        self.colours = {0 : self.parent.background, 1 : BLUE}
         self.hovered = False
         self.rect_surface = pygame.Surface((self.rect[2], self.rect[3])) # intermediate surface to hide edge of draw()
     
@@ -160,3 +160,31 @@ class PrefabButton(LifeButton):
     def function(self):
         """copy pattern to selected"""
         self.parent.selected_pattern = self.pattern.copy()
+
+
+
+class LifeGraphic(LifeTextBox):
+    """LifeTextBox but for images instead of text
+    visible_area is (top left y, top left x, height, width"""
+    def __init__(self, array:str, rect, visible_area, cell_size=6, background=BLACK, cell_colour=BLUE, collapse=False):
+        self.rect = pygame.Rect(rect)
+        array = np.genfromtxt('graphics/' + array + '.csv', delimiter=',')
+        self.grid = Grid(array) # create grid object from array
+        self.visible_area = visible_area
+        self.cell_size = cell_size
+        self.colours = {0 : background, 1 : cell_colour}
+        self.hovered = False
+        if collapse: # collapse rect dimensions to match grid
+            self.rect.update(self.rect[0], self.rect[1],
+                            self.visible_area[2] * self.cell_size,
+                            self.visible_area[3] * self.cell_size)
+
+    def draw(self, surface):
+        """draw object on surface
+        uses self.sim_edges instead of hardcoded values"""
+        mask_list = [np.equal(self.grid.array, n) for n in range(2)] # create boolean masks for each type of cell (0 through 4)
+        # the next line is very densely packed to avoid wasteful memory intensive copies of potentially million item arrays. There is an explanation for how it works in commit Alpha v1.6
+        pixel_array = sum([np.asarray(self.colours[n]) * np.transpose(np.broadcast_to(mask_list[n][:,:,None], (mask_list[n].shape[0], mask_list[n].shape[1], 3)), (1,0,2)) for n in range(2)])
+        pixel_surf = pygame.surfarray.make_surface(pixel_array[self.visible_area[0]:self.visible_area[0]+self.visible_area[2],self.visible_area[1]:self.visible_area[1]+self.visible_area[3],:]) # make surface, excluding outer 5 rows/columns
+        pixel_surf = pygame.transform.scale(pixel_surf, (pixel_surf.get_size()[0]*self.cell_size, pixel_surf.get_size()[1]*self.cell_size)) # scale by cell size
+        surface.blit(pixel_surf, self.rect[0:2]) # draw on window

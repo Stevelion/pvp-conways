@@ -11,7 +11,7 @@ from lifegui import PrefabButton
 # some temporary colour definitions for easier GUI dev
 BUILD_COLOUR = (30, 240, 80)
 DEFAULT_BUTTON_COLOUR = (180,180,180)
-BACKGROUND_COLOUR = (240,240,240)
+BACKGROUND_COLOUR = (200,200,200)
 BLACK, RED, GREEN, BLUE = (0,0,0), (255, 0, 0), (0,255,0), (0,0,255)
 
 
@@ -39,7 +39,7 @@ class Game:
         self.ingame = True # when to end game loop and return to menu
         self.game_over = False # if a base has been destroyed
         self.cycles = 1 # counter for tickrate math
-        self.colours = {0 : (0, 0, 0), 1 : (0, 0, 255), 2 : (255, 0, 0), 3 : (225, 115, 20), 4 : (140, 0, 200), 5 : (10, 10, 10), 6 : (50, 90, 255)} # colour dict for draw()
+        self.colours = {0 : (0, 0, 0), 1 : (0, 0, 255), 2 : (255, 0, 0), 3 : (225, 115, 20), 4 : (140, 0, 200), 5 : (15, 15, 15), 6 : (50, 90, 255)} # colour dict for draw()
         self.background = BACKGROUND_COLOUR
         self.rect_surface = pygame.Surface((self.rect[2], self.rect[3])) # intermediate surface to hide rolling edge of draw()
         self.view_coords = [(self.grid.array.shape[1]*cell_size - self.rect[3]) // 2,
@@ -60,7 +60,7 @@ class Game:
 
     def main(self):
         self.start_time = time.perf_counter()
-        self.surface.fill(BACKGROUND_COLOUR)
+        self.surface.fill(self.background)
         while self.ingame:
             # get events
             self.handle_events(pygame.event.get())
@@ -348,6 +348,7 @@ class LevelEditor(Game):
         if not self.time_on: # only do if time is stopped
             # translate to global array coords (also needs to be y,x for numpy)
             coords = [(event.pos[n] - self.rect[n] + self.view_coords[n]) // self.cell_size for n in range(2)][::-1]
+            print([coord-2 for coord in coords]) # for debug purposes only TODO remove
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.grid.array[coords[0], coords[1]] < 4:
                 self.grid.array[coords[0], coords[1]] += 1 # increment when left click
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3 and self.grid.array[coords[0], coords[1]] > 0:
